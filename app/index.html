@@ -1,0 +1,1080 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hagenda</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="theme-color" content="#3346c9">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: app shell — kopbalk, zijbalk met agenda's (vast op desktop, schuiflade op gsm), weergave vult de rest */
+:root{
+  --bg:#f3f4f9; --surface:#ffffff; --surface-2:#eceef6; --fg:#171b2b; --muted:#646b82; --line:#dfe2ec;
+  --accent:#3346c9; --accent-fg:#ffffff; --accent-soft:#e3e7fb; --danger:#c42b3c; --warn-bg:#fff4d6; --warn-fg:#6b4d00;
+  --now:#e0364a; --shadow:0 10px 30px rgba(20,26,60,.16);
+  --font-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body:"Figtree", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  --hour:48px;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0f121b; --surface:#171b27; --surface-2:#202534; --fg:#e8eaf3; --muted:#9097ad; --line:#2a3042;
+  --accent:#8a9bff; --accent-fg:#0f121b; --accent-soft:#252c4d; --danger:#ff6b7b; --warn-bg:#3a2f12; --warn-fg:#ffd98a;
+  --now:#ff5a6c; --shadow:0 10px 30px rgba(0,0,0,.5); color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#0f121b; --surface:#171b27; --surface-2:#202534; --fg:#e8eaf3; --muted:#9097ad; --line:#2a3042;
+  --accent:#8a9bff; --accent-fg:#0f121b; --accent-soft:#252c4d; --danger:#ff6b7b; --warn-bg:#3a2f12; --warn-fg:#ffd98a;
+  --now:#ff5a6c; --shadow:0 10px 30px rgba(0,0,0,.5); color-scheme:dark }
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 var(--font-body);-webkit-font-smoothing:antialiased;overflow:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.tab{font-variant-numeric:tabular-nums}
+svg.i{width:20px;height:20px;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+#shell{height:100%;display:grid;grid-template-rows:auto auto 1fr;grid-template-columns:auto 1fr}
+#banner{grid-column:1/-1}
+header{grid-column:1/-1;display:flex;align-items:center;gap:8px;background:var(--surface);border-bottom:1px solid var(--line);
+  padding-block:8px;padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px));min-width:0}
+.icon-btn{display:inline-grid;place-items:center;width:40px;height:40px;border-radius:50%;border:0;background:transparent;color:var(--fg)}
+.icon-btn:hover{background:var(--surface-2)}
+.btn{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:18px;border:1px solid var(--line);background:var(--surface);font-weight:600;white-space:nowrap}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.danger{color:var(--danger)}
+.btn.ghost{border-color:transparent;background:transparent}
+#title{font:700 20px/1.1 var(--font-display);letter-spacing:-.01em;margin:0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}
+#title small{display:block;font:500 12px var(--font-body);color:var(--muted);letter-spacing:0}
+.seg{display:flex;background:var(--surface-2);border-radius:18px;padding:3px;gap:2px}
+.seg button{border:0;background:transparent;height:30px;padding:0 12px;border-radius:15px;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--fg);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+#viewSel{display:none;height:36px;border-radius:18px;border:1px solid var(--line);background:var(--surface);padding:0 10px;font-weight:600}
+.avatar{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:13px;color:#fff;border:0}
+
+#banner .inner{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;background:var(--warn-bg);color:var(--warn-fg);font-size:13px;
+  padding-block:6px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+#banner .seg{background:rgba(0,0,0,.07)} #banner .seg button{height:24px;font-size:12px;color:inherit}
+#banner .seg button[aria-pressed="true"]{color:var(--fg)}
+
+/* zijbalk */
+#drawer{width:270px;background:var(--surface);border-right:1px solid var(--line);overflow:auto;padding:14px 12px 90px;display:flex;flex-direction:column;gap:16px;
+  padding-left:max(12px,env(safe-area-inset-left,0px))}
+#drawer h3{font:600 11px var(--font-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 6px 8px}
+.cal-row{display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:10px;min-width:0}
+.cal-row:hover{background:var(--surface-2)}
+.cal-row input{width:18px;height:18px;accent-color:var(--c);margin:0;flex:none}
+.cal-row .nm{flex:1;min-width:0;line-height:1.25}
+.cal-row .nm b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cal-row .nm span{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:4px}
+.cal-row .nm span svg{width:12px;height:12px}
+.cal-row .icon-btn{width:32px;height:32px;opacity:.7}
+.cal-row .icon-btn svg{width:17px;height:17px}
+.drawer-actions{display:flex;flex-direction:column;gap:6px}
+.drawer-actions .btn{justify-content:flex-start;border-radius:10px}
+#scrim{display:none}
+
+main{min-width:0;min-height:0;display:flex;flex-direction:column;position:relative}
+#view{flex:1;min-height:0;display:flex;flex-direction:column}
+
+/* maand */
+.month{flex:1;display:grid;grid-template-rows:auto 1fr;min-height:0}
+.month .dow{display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--line);background:var(--surface)}
+.month .dow div{padding:6px 8px;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.month .cells{display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:1fr;min-height:0;background:var(--line);gap:1px}
+.mcell{background:var(--surface);padding:4px 4px 2px;min-width:0;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:2px;cursor:pointer}
+.mcell.out{background:var(--bg)} .mcell.out .dn{color:var(--muted)}
+.mcell .dn{font-size:12px;font-weight:600;width:24px;height:24px;display:grid;place-items:center;border-radius:50%;align-self:flex-start}
+.mcell.today .dn{background:var(--accent);color:var(--accent-fg)}
+.mchip{display:flex;align-items:center;gap:4px;font-size:12px;line-height:18px;border-radius:5px;padding:0 4px;white-space:nowrap;overflow:hidden;min-width:0;border:0;background:transparent;text-align:left;width:100%}
+.mchip.fill{background:var(--c);color:var(--tc,#fff);font-weight:600}
+.mchip .dot{width:8px;height:8px;border-radius:50%;background:var(--c);flex:none}
+.mchip .t{color:var(--muted);flex:none}
+.mchip .x{overflow:hidden;text-overflow:ellipsis}
+.mchip:hover{filter:brightness(.95)}
+.more{font-size:11px;color:var(--muted);padding-left:4px;font-weight:600}
+
+/* tijdsrooster */
+.tg{flex:1;display:flex;flex-direction:column;min-height:0;background:var(--surface)}
+.tg-row{display:grid;grid-template-columns:52px repeat(var(--n),minmax(0,1fr))}
+.tg-head{border-bottom:1px solid var(--line)}
+.tg-head .d{text-align:center;padding:6px 2px;cursor:pointer;min-width:0}
+.tg-head .d small{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.tg-head .d b{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:50%;font:600 19px var(--font-display)}
+.tg-head .d.today small{color:var(--accent)} .tg-head .d.today b{background:var(--accent);color:var(--accent-fg)}
+.tg-allday{border-bottom:1px solid var(--line);min-height:8px}
+.tg-allday .lab{font-size:10px;color:var(--muted);padding:4px 4px 0;text-align:right}
+.tg-allday .c{padding:2px;display:flex;flex-direction:column;gap:2px;min-width:0;border-left:1px solid var(--line)}
+.tg-scroll{flex:1;overflow-y:auto;overflow-x:hidden;min-height:0}
+.tg-body{position:relative;height:calc(var(--hour) * 24)}
+.tg-hours{position:relative}
+.tg-hours span{position:absolute;right:6px;transform:translateY(-50%);font-size:11px;color:var(--muted)}
+.tg-col{position:relative;border-left:1px solid var(--line);
+  background-image:linear-gradient(to bottom,var(--line) 1px,transparent 1px);background-size:100% var(--hour)}
+.tg-col.today{background-color:color-mix(in srgb,var(--accent) 4%,transparent)}
+.ev{color:var(--tc,#fff);display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch;position:absolute;border-radius:6px;background:var(--c);padding:3px 6px;font-size:12px;line-height:1.25;overflow:hidden;border:1px solid var(--surface);text-align:left;cursor:pointer}
+.ev b{font-weight:600;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ev span{opacity:.92;white-space:nowrap}
+.ev svg{width:11px;height:11px;vertical-align:-1px;stroke:currentColor}
+.ev:hover{filter:brightness(1.06);z-index:3}
+.nowline{position:absolute;left:-1px;right:0;height:2px;background:var(--now);z-index:4;pointer-events:none}
+.nowline::before{content:"";position:absolute;left:-5px;top:-4px;width:10px;height:10px;border-radius:50%;background:var(--now)}
+
+/* planning */
+.agenda{flex:1;overflow:auto;padding-block:8px 100px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.agenda .day{display:grid;grid-template-columns:64px 1fr;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);max-width:760px}
+.agenda .dd{text-align:center;padding-top:2px}
+.agenda .dd small{display:block;font-size:11px;text-transform:uppercase;color:var(--muted);font-weight:600;letter-spacing:.06em}
+.agenda .dd b{font:600 22px var(--font-display)}
+.agenda .dd.today b,.agenda .dd.today small{color:var(--accent)}
+.agenda ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;min-width:0}
+.aitem{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border-radius:10px;background:var(--surface);border:1px solid var(--line);cursor:pointer;width:100%;text-align:left;min-width:0}
+.aitem:hover{border-color:var(--c)}
+.aitem .dot{width:10px;height:10px;border-radius:50%;background:var(--c);margin-top:5px;flex:none}
+.aitem .tx{min-width:0;flex:1}
+.aitem .tx b{font-weight:600;display:block;overflow-wrap:anywhere}
+.aitem .tx span{font-size:13px;color:var(--muted)}
+.aitem svg{width:14px;height:14px;color:var(--muted);margin-top:4px}
+.empty{color:var(--muted);padding:40px 0;text-align:center}
+
+#fab{position:fixed;right:calc(20px + env(safe-area-inset-right,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px));height:56px;padding:0 22px 0 18px;border-radius:18px;border:0;
+  background:var(--accent);color:var(--accent-fg);font-weight:700;display:flex;align-items:center;gap:8px;box-shadow:var(--shadow);z-index:20}
+#fab svg{width:24px;height:24px}
+
+/* dialogen */
+dialog{border:0;border-radius:18px;padding:0;background:var(--surface);color:var(--fg);box-shadow:var(--shadow);width:min(520px,calc(100vw - 24px));max-height:calc(100dvh - 24px)}
+dialog::backdrop{background:rgba(10,12,25,.45)}
+.dlg{display:flex;flex-direction:column;max-height:calc(100dvh - 24px)}
+.dlg-head{display:flex;align-items:center;gap:8px;padding:14px 14px 6px 20px}
+.dlg-head h2{flex:1;margin:0;font:700 19px var(--font-display);text-wrap:balance}
+.dlg-body{padding:6px 20px 12px;overflow:auto;display:flex;flex-direction:column;gap:12px}
+.dlg-foot{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;padding:12px 20px 18px;border-top:1px solid var(--line)}
+.dlg-foot .spacer{flex:1}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field>label,.lbl{font-size:12px;font-weight:600;color:var(--muted)}
+.inp{height:42px;border:1px solid var(--line);border-radius:10px;background:var(--bg);padding:0 12px;width:100%;min-width:0}
+textarea.inp{height:auto;min-height:70px;padding:10px 12px;resize:vertical}
+.inp.big{font-size:18px;font-weight:600;height:48px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.row>*{flex:1 1 130px}
+.check{display:flex;align-items:center;gap:8px;font-weight:500}
+.check input{width:18px;height:18px;accent-color:var(--accent)}
+.swatches{display:flex;gap:8px;flex-wrap:wrap}
+.swatches button{width:30px;height:30px;border-radius:50%;border:3px solid var(--surface);background:var(--c);box-shadow:0 0 0 1px var(--line)}
+.swatches button[aria-pressed="true"]{box-shadow:0 0 0 2px var(--fg)}
+.swatch-row{display:flex;flex-direction:column;gap:8px}
+.datefld{position:relative;display:flex;gap:4px;align-items:center}
+.datefld .inp{flex:1}
+.datefld .icon-btn{flex:none;color:var(--muted)}
+.datefld .picker{position:absolute;right:0;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none;border:0;padding:0}
+.own-color{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.own-color input{width:42px;height:30px;padding:0;border:1px solid var(--line);border-radius:8px;background:none;cursor:pointer}
+.radio-cards{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.radio-cards label{border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;gap:8px;align-items:flex-start;cursor:pointer;font-size:13px;color:var(--muted)}
+.radio-cards label b{display:block;color:var(--fg);font-size:14px}
+.radio-cards input{margin-top:3px;accent-color:var(--accent)}
+.radio-cards label:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+.note{font-size:13px;color:var(--muted);background:var(--surface-2);border-radius:10px;padding:10px 12px}
+.note b{color:var(--fg)}
+.detail-line{display:flex;gap:12px;align-items:flex-start}
+.detail-line svg{margin-top:2px;color:var(--muted)}
+.detail-line .sw{width:14px;height:14px;border-radius:4px;background:var(--c);margin:4px 3px 0;flex:none}
+.err{color:var(--danger);font-size:13px;min-height:1em}
+code.k{font-size:13px;background:var(--surface-2);padding:2px 6px;border-radius:6px;user-select:all}
+
+#toast{position:fixed;left:50%;bottom:calc(90px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:12px;font-weight:600;z-index:50;box-shadow:var(--shadow);max-width:calc(100vw - 32px)}
+
+/* inloggen */
+#auth{position:fixed;inset:0;background:var(--bg);display:grid;place-items:center;z-index:40;overflow:auto;
+  padding-block:24px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.auth-card{width:min(400px,100%);background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:28px 24px;display:flex;flex-direction:column;gap:14px}
+.auth-card h1{font:700 30px var(--font-display);margin:0;letter-spacing:-.02em}
+.auth-card p{margin:0;color:var(--muted)}
+.logo{width:48px;height:48px;border-radius:14px;background:var(--accent);color:var(--accent-fg);display:grid;place-items:center;font:700 22px var(--font-display)}
+
+@media (max-width:999px){
+  #shell{grid-template-columns:1fr}
+  #drawer{position:fixed;top:0;bottom:0;left:0;z-index:30;transform:translateX(-105%);transition:transform .22s ease;box-shadow:var(--shadow);width:min(300px,85vw);
+    padding-top:calc(14px + env(safe-area-inset-top,0px))}
+  #shell.open #drawer{transform:none}
+  #shell.open #scrim{display:block;position:fixed;inset:0;background:rgba(10,12,25,.4);z-index:25}
+}
+@media (min-width:1000px){ #menuBtn{display:none} }
+@media (max-width:760px){
+  .seg.views{display:none} #viewSel{display:block}
+  #todayBtn{padding:0 10px}
+  #title{font-size:17px}
+  .tg-row{grid-template-columns:40px repeat(var(--n),minmax(0,1fr))}
+  .tg-hours span{font-size:10px;right:4px}
+  .mchip{font-size:11px;padding:0 2px} .mchip .t{display:none}
+  .month .dow div{padding:4px;font-size:11px}
+  #fab span{display:none} #fab{padding:0 16px}
+}
+@media (max-width:420px){ #prevBtn,#nextBtn{width:34px} .tg-head .d b{width:28px;height:28px;font-size:16px} }
+@media (prefers-reduced-motion:reduce){ *{transition:none!important} }
+</style>
+</head>
+<body>
+<div id="shell">
+  <div id="banner"></div>
+  <header>
+    <button class="icon-btn" id="menuBtn" aria-label="Agenda's tonen"><svg class="i" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+    <button class="btn" id="todayBtn">Vandaag</button>
+    <button class="icon-btn" id="prevBtn" aria-label="Vorige"><svg class="i" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></button>
+    <button class="icon-btn" id="nextBtn" aria-label="Volgende"><svg class="i" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button>
+    <h1 id="title"></h1>
+    <div class="seg views" role="group" aria-label="Weergave">
+      <button data-v="dag">Dag</button><button data-v="3dagen">3 dagen</button><button data-v="week">Week</button><button data-v="maand">Maand</button><button data-v="planning">Planning</button>
+    </div>
+    <select id="viewSel" aria-label="Weergave">
+      <option value="dag">Dag</option><option value="3dagen">3 dagen</option><option value="week">Week</option><option value="maand">Maand</option><option value="planning">Planning</option>
+    </select>
+    <button class="avatar" id="meBtn" aria-label="Account en instellingen"></button>
+  </header>
+  <aside id="drawer" aria-label="Agenda's"></aside>
+  <div id="scrim"></div>
+  <main><div id="view"></div></main>
+</div>
+<button id="fab" aria-label="Nieuwe afspraak"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>Afspraak</span></button>
+<dialog id="dlg"></dialog>
+<div id="auth" hidden></div>
+<div id="toast" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+/* ============================================================
+   CONFIGURATIE
+   Laat leeg = demomodus (alles blijft in deze browser).
+   Vul je Supabase-gegevens in = echte gedeelde agenda in de cloud.
+   (Project Settings > API in Supabase. De "anon"-sleutel is bedoeld
+    om in apps te staan; de beveiliging zit in de database-regels.)
+   ============================================================ */
+const CONFIG = {
+  supabaseUrl: "https://pcakjvafcmzikqludpya.supabase.co",
+  supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBjYWtqdmFmY216aWtxbHVkcHlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI3NzkwNjEsImV4cCI6MjEwODM1NTA2MX0.T83sTpklKbNwAtswZVwwepyUvYf6EdQsBX-pGudUdJE"
+};
+
+/* ---------- hulpfuncties ---------- */
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const pad = n => String(n).padStart(2, "0");
+const dkey = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const fromKey = k => { const [y, m, d] = k.split("-").map(Number); return new Date(y, m - 1, d); };
+const sod = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n, d.getHours(), d.getMinutes());
+const addMonths = (d, n) => { const r = new Date(d.getFullYear(), d.getMonth() + n, 1, d.getHours(), d.getMinutes()); const last = new Date(r.getFullYear(), r.getMonth() + 1, 0).getDate(); r.setDate(Math.min(d.getDate(), last)); return r; };
+const sow = d => { const s = sod(d); return addDays(s, -((s.getDay() + 6) % 7)); };
+const sameDay = (a, b) => dkey(a) === dkey(b);
+const hm = d => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const fmtDate = d => `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+const DOW = ["ma", "di", "wo", "do", "vr", "za", "zo"];
+const DOW_LONG = ["maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag", "zondag"];
+const MONTHS = ["januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september", "oktober", "november", "december"];
+const MON_S = ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
+const dow = d => (d.getDay() + 6) % 7;
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : "id-" + Math.random().toString(36).slice(2) + Date.now());
+const allDayIso = d => dkey(d) + "T00:00:00Z";
+const COLORS = ["#3346c9", "#d0367a", "#0f8a5f", "#c26a00", "#7a3ad6", "#0a83a6", "#c8323b", "#5b6275"];
+const LIGHT = ["#a9c1ff", "#ffb3d0", "#a3e4c5", "#ffd49a", "#d6c0fb", "#9fdff0", "#ffb2aa", "#d9dde6"];
+// tekstkleur die leesbaar is op de agendakleur (donker op licht, wit op donker)
+function tc(hex) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex || ""); if (!m) return "#fff";
+  const n = parseInt(m[1], 16), lin = v => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; };
+  const L = .2126 * lin(n >> 16) + .7152 * lin((n >> 8) & 255) + .0722 * lin(n & 255);
+  return L > .4 ? "#1b2030" : "#ffffff";
+}
+const cv = c => `--c:${c};--tc:${tc(c)}`;
+// Europese datum: "23/10/2026", "23-10-26", "23.10.2026", "23102026" -> "2026-10-23"
+function normDate(v) {
+  v = String(v || "").trim(); if (!v) return null;
+  let x = /^(\d{1,2})[\/.\- ](\d{1,2})[\/.\- ](\d{2}|\d{4})$/.exec(v) || (/^\d{8}$/.test(v) && [0, v.slice(0, 2), v.slice(2, 4), v.slice(4)]) || (/^\d{6}$/.test(v) && [0, v.slice(0, 2), v.slice(2, 4), v.slice(4)]);
+  if (!x) { const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v); if (iso) x = [0, iso[3], iso[2], iso[1]]; else return null; }
+  let [dd, mm, yy] = [+x[1], +x[2], +x[3]]; if (yy < 100) yy += 2000;
+  const d = new Date(yy, mm - 1, dd);
+  if (d.getFullYear() !== yy || d.getMonth() !== mm - 1 || d.getDate() !== dd) return null;
+  return dkey(d);
+}
+const dateField = (id, key) => `<div class="datefld"><input class="inp tab" id="${id}" value="${key ? fmtDate(fromKey(key)) : ""}" inputmode="numeric" placeholder="dd/mm/jjjj" maxlength="10" autocomplete="off"><button type="button" class="icon-btn" data-pick="${id}" aria-label="Kalender openen">${I.cal}</button><input type="date" class="picker" data-for="${id}" tabindex="-1" aria-hidden="true"></div>`;
+// 24-uursnotatie: "930", "0930", "9:30", "9.30", "9" -> "09:30"
+function normTime(v) {
+  v = String(v || "").trim().replace(/[.,h ]/g, ":");
+  let h, m;
+  if (/^\d{1,2}$/.test(v)) { h = +v; m = 0; }
+  else if (/^\d{3,4}$/.test(v)) { h = +v.slice(0, -2); m = +v.slice(-2); }
+  else { const x = /^(\d{1,2}):(\d{1,2})$/.exec(v); if (!x) return null; h = +x[1]; m = +x[2]; }
+  if (h > 23 || m > 59) return null;
+  return `${pad(h)}:${pad(m)}`;
+}
+const ls = { get(k, f) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : f; } catch { return f; } },
+             set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
+
+const I = {
+  lock: '<svg class="i" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
+  users: '<svg class="i" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5a6.5 6.5 0 0 1 3.5 5.5"/></svg>',
+  link: '<svg class="i" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>',
+  dots: '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>',
+  x: '<svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+  plus: '<svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+  sync: '<svg class="i" viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5M3 21v-5h5"/></svg>',
+  clock: '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  pin: '<svg class="i" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>',
+  text: '<svg class="i" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>',
+  repeat: '<svg class="i" viewBox="0 0 24 24"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/></svg>',
+  gear: '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+  cal: '<svg class="i" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>',
+  user: '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
+};
+
+/* ============================================================
+   OPSLAG — demomodus (lokaal) of Supabase (cloud)
+   Beide bieden dezelfde functies aan, de rest van de app merkt
+   het verschil niet.
+   ============================================================ */
+
+/* ---- Demo ---- */
+class DemoStore {
+  constructor() { this.mode = "demo"; this.key = "hagenda-demo-v1"; this.listeners = []; }
+  async init() {
+    this.db = ls.get(this.key, null);
+    if (!this.db) { this.db = this.seed(); this.save(); }
+    this.me = ls.get(this.key + "-me", "u1");
+    return true;
+  }
+  save() { ls.set(this.key, this.db); }
+  reset() { this.db = this.seed(); this.save(); }
+  setMe(id) { this.me = id; ls.set(this.key + "-me", id); }
+  members() { return this.db.members; }
+  household() { return { name: "Ons huishouden", invite_code: "DEMO-4821" }; }
+  async load() {
+    const me = this.me;
+    const cals = this.db.calendars.filter(c => c.visibility === "shared" || c.owner_id === me);
+    const ids = new Set(cals.map(c => c.id));
+    return { calendars: cals, events: this.db.events.filter(e => ids.has(e.calendar_id)) };
+  }
+  async saveEvent(ev) {
+    const i = this.db.events.findIndex(e => e.id === ev.id);
+    if (i >= 0) this.db.events[i] = { ...this.db.events[i], ...ev }; else this.db.events.push({ ...ev, id: ev.id || uid(), created_by: this.me });
+    this.save();
+  }
+  async deleteEvent(id) { this.db.events = this.db.events.filter(e => e.id !== id); this.save(); }
+  async saveCalendar(c) {
+    const i = this.db.calendars.findIndex(x => x.id === c.id);
+    if (i >= 0) this.db.calendars[i] = { ...this.db.calendars[i], ...c };
+    else { c = { ...c, id: c.id || uid(), owner_id: this.me }; this.db.calendars.push(c); }
+    this.save();
+    if (c.kind === "ics" && i < 0) await this.syncNow(c.id);
+    return c;
+  }
+  async deleteCalendar(id) { this.db.calendars = this.db.calendars.filter(c => c.id !== id); this.db.events = this.db.events.filter(e => e.calendar_id !== id); this.save(); }
+  async getIcsUrl(id) { return (this.db.calendars.find(c => c.id === id) || {}).ics_url || ""; }
+  async syncNow(id) {
+    // In de demo kan een browser geen externe agenda ophalen (dat doet straks de cloudfunctie).
+    // We bootsen het na met voorbeelddata.
+    const c = this.db.calendars.find(x => x.id === id); if (!c) return;
+    await new Promise(r => setTimeout(r, 700));
+    this.db.events = this.db.events.filter(e => e.calendar_id !== id);
+    const gen = c.demo === "dienst" ? demoShifts : c.demo === "google" ? demoGoogle : () => [];
+    gen(id).forEach(e => this.db.events.push(e));
+    c.last_synced_at = new Date().toISOString(); c.last_error = null;
+    this.save();
+  }
+  subscribe(cb) { this.listeners.push(cb); }
+  seed() {
+    const t = sod(new Date()), w = sow(t);
+    const at = (dayOffset, h, m = 0, base = w) => { const d = addDays(base, dayOffset); d.setHours(h, m, 0, 0); return d.toISOString(); };
+    const now = new Date().toISOString();
+    const cals = [
+      { id: "c-samen", name: "Samen", color: "#3346c9", kind: "local", visibility: "shared", owner_id: "u1" },
+      { id: "c-prive-u1", name: "Privé", color: "#5b6275", kind: "local", visibility: "private", owner_id: "u1" },
+      { id: "c-prive-u2", name: "Privé", color: "#7a3ad6", kind: "local", visibility: "private", owner_id: "u2" },
+      { id: "c-dienst", name: "Werk (dienstplanner)", color: "#0a83a6", kind: "ics", visibility: "shared", owner_id: "u1", demo: "dienst", ics_url: "https://www.dienstplanner.be/…/voorbeeld.ics", last_synced_at: now },
+      { id: "c-google", name: "Google Agenda", color: "#d0367a", kind: "ics", visibility: "shared", owner_id: "u2", demo: "google", ics_url: "https://calendar.google.com/calendar/ical/…/private-…/basic.ics", last_synced_at: now },
+    ];
+    const ev = [
+      { calendar_id: "c-samen", title: "Etentje bij mama en papa", start: at(5, 18, 30), end: at(5, 22, 0), location: "Binche" },
+      { calendar_id: "c-samen", title: "Boodschappen", start: at(2, 17, 0), end: at(2, 18, 0), rrule: { freq: "weekly" } },
+      { calendar_id: "c-samen", title: "Weekendje Ardennen", start: allDayIso(addDays(w, 12)), end: allDayIso(addDays(w, 14)), all_day: true, location: "La Roche-en-Ardenne" },
+      { calendar_id: "c-samen", title: "Huur betalen", start: allDayIso(new Date(t.getFullYear(), t.getMonth(), 1)), end: allDayIso(new Date(t.getFullYear(), t.getMonth(), 2)), all_day: true, rrule: { freq: "monthly" } },
+      { calendar_id: "c-samen", title: "Verjaardag Lotte", start: allDayIso(addDays(w, 9)), end: allDayIso(addDays(w, 10)), all_day: true, rrule: { freq: "yearly" } },
+      { calendar_id: "c-prive-u1", title: "Cadeau kopen (verrassing)", start: at(3, 12, 0), end: at(3, 13, 0), notes: "Niet in de gedeelde agenda zetten!" },
+      { calendar_id: "c-prive-u1", title: "Fietsrit", start: at(6, 9, 0), end: at(6, 11, 30), rrule: { freq: "weekly" } },
+      { calendar_id: "c-prive-u2", title: "Afspraak kapper", start: at(4, 10, 0), end: at(4, 11, 0) },
+    ].map(e => ({ id: uid(), all_day: false, location: "", notes: "", rrule: null, created_by: "u1", ...e }));
+    return {
+      members: [{ user_id: "u1", display_name: "Jij", color: "#3346c9" }, { user_id: "u2", display_name: "Partner", color: "#d0367a" }],
+      calendars: cals, events: [...ev, ...demoShifts("c-dienst"), ...demoGoogle("c-google")],
+    };
+  }
+}
+function demoShifts(calId) {
+  const w = addDays(sow(new Date()), -7), out = [];
+  const pattern = ["V", "V", "L", "L", "N", "N", "-", "-", "V", "V", "L", "L", "N", "-", "-", "-", "V", "L", "L", "N", "N", "-", "-", "V", "V", "V", "L", "-", "-", "N"];
+  const def = { V: ["Vroege dienst", 6, 14], L: ["Late dienst", 14, 22], N: ["Nachtdienst", 22, 30] };
+  pattern.forEach((p, i) => {
+    if (p === "-") return;
+    const [title, h1, h2] = def[p]; const d = addDays(w, i);
+    const s = new Date(d); s.setHours(h1, 0, 0, 0); const e = addDays(d, Math.floor(h2 / 24)); e.setHours(h2 % 24, 0, 0, 0);
+    out.push({ id: uid(), calendar_id: calId, title, start: s.toISOString(), end: e.toISOString(), all_day: false, location: "Commissariaat", notes: "", rrule: null, external: true });
+  });
+  return out;
+}
+function demoGoogle(calId) {
+  const w = sow(new Date()), mk = (o, h1, m1, h2, m2, title, loc = "") => { const s = addDays(w, o); s.setHours(h1, m1, 0, 0); const e = addDays(w, o); e.setHours(h2, m2, 0, 0); return { id: uid(), calendar_id: calId, title, start: s.toISOString(), end: e.toISOString(), all_day: false, location: loc, notes: "", rrule: null, external: true }; };
+  const out = [];
+  for (let k = -1; k < 5; k++) { out.push(mk(k * 7 + 1, 19, 0, 20, 15, "Yoga", "Sportcentrum")); }
+  out.push(mk(3, 8, 30, 9, 0, "Tandarts", "Rue de la Station"));
+  out.push(mk(8, 13, 0, 17, 0, "Opleiding"));
+  out.push(mk(10, 20, 0, 23, 0, "Film met vriendinnen"));
+  return out;
+}
+
+/* ---- Supabase ---- */
+class LiveStore {
+  constructor() {
+    this.mode = "live";
+    this.sb = supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseAnonKey, { auth: { persistSession: true, autoRefreshToken: true } });
+    this.cacheKey = "hagenda-cache-v1";
+  }
+  async init() {
+    const { data } = await this.sb.auth.getSession();
+    this.session = data.session;
+    if (!this.session) return false;
+    // bestaat dit account nog? (bv. na verwijderen in Supabase) — zo niet: afmelden
+    const { data: u, error: ue } = await this.sb.auth.getUser();
+    if (ue || !u || !u.user) {
+      if (!ue || ue.status === 401 || ue.status === 403 || /not.*found|does not exist|invalid/i.test(ue.message || "")) {
+        await this.sb.auth.signOut({ scope: "local" }); this.session = null; return false;
+      }
+    }
+    this.me = this.session.user.id;
+    return this.loadProfile();
+  }
+  async signIn(email, password) { const { data, error } = await this.sb.auth.signInWithPassword({ email, password }); if (error) throw error; this.session = data.session; this.me = data.user.id; }
+  async signUp(email, password) {
+    const { data, error } = await this.sb.auth.signUp({ email, password });
+    if (error) throw error;
+    if (!data.session) throw new Error("Account gemaakt. Bevestig je e-mailadres via de link in je mailbox en log daarna in.");
+    this.session = data.session; this.me = data.user.id;
+  }
+  async signOut() { await this.sb.auth.signOut(); try { localStorage.removeItem(this.cacheKey); } catch {} }
+  async loadProfile() {
+    const { data, error } = await this.sb.from("members").select("household_id, display_name, color, households(name, invite_code)").eq("user_id", this.me).maybeSingle();
+    if (error) throw error;
+    this.profile = data;
+    if (!data) return "nohousehold";
+    const m = await this.sb.from("members").select("user_id, display_name, color").eq("household_id", data.household_id);
+    this._members = m.data || [];
+    return true;
+  }
+  async createHousehold(name, displayName) { const { error } = await this.sb.rpc("create_household", { p_name: name, p_display_name: displayName }); if (error) throw error; return this.loadProfile(); }
+  async joinHousehold(code, displayName) { const { error } = await this.sb.rpc("join_household", { p_code: code.trim().toUpperCase(), p_display_name: displayName }); if (error) throw error; return this.loadProfile(); }
+  members() { return this._members || []; }
+  household() { return this.profile?.households || {}; }
+  async load() {
+    try {
+      const from = addMonths(new Date(), -12).toISOString(), to = addMonths(new Date(), 24).toISOString();
+      const [c, e] = await Promise.all([
+        this.sb.from("calendars").select("*").order("created_at"),
+        this.sb.from("events").select("id, calendar_id, title, start:starts_at, end:ends_at, all_day, location, notes, rrule, external_uid, created_by")
+          .or(`rrule.not.is.null,and(starts_at.lt.${to},ends_at.gt.${from})`).limit(20000),
+      ]);
+      if (c.error) throw c.error; if (e.error) throw e.error;
+      const data = { calendars: c.data, events: e.data.map(x => ({ ...x, external: !!x.external_uid })) };
+      ls.set(this.cacheKey, data);
+      this.offline = false;
+      return data;
+    } catch (err) {
+      // geen internet: laatst gekende gegevens tonen
+      const cached = ls.get(this.cacheKey, null);
+      if (cached) { this.offline = true; return cached; }
+      throw err;
+    }
+  }
+  async saveEvent(ev) {
+    const row = { calendar_id: ev.calendar_id, title: ev.title, starts_at: ev.start, ends_at: ev.end, all_day: !!ev.all_day, location: ev.location || "", notes: ev.notes || "", rrule: ev.rrule || null };
+    const q = ev.id ? this.sb.from("events").update(row).eq("id", ev.id) : this.sb.from("events").insert(row);
+    const { error } = await q; if (error) throw error;
+  }
+  async deleteEvent(id) { const { error } = await this.sb.from("events").delete().eq("id", id); if (error) throw error; }
+  async saveCalendar(c) {
+    const row = { name: c.name, color: c.color, visibility: c.visibility, kind: c.kind };
+    let id = c.id;
+    if (id) { const { error } = await this.sb.from("calendars").update(row).eq("id", id); if (error) throw error; }
+    else {
+      const { data, error } = await this.sb.from("calendars").insert({ ...row, household_id: this.profile.household_id }).select().single();
+      if (error) throw error; id = data.id;
+    }
+    if (c.kind === "ics" && c.ics_url) {
+      const { error } = await this.sb.from("calendar_secrets").upsert({ calendar_id: id, ics_url: c.ics_url.trim() });
+      if (error) throw error;
+      await this.syncNow(id);
+    }
+    return { ...c, id };
+  }
+  async deleteCalendar(id) { const { error } = await this.sb.from("calendars").delete().eq("id", id); if (error) throw error; }
+  async getIcsUrl(id) { const { data } = await this.sb.from("calendar_secrets").select("ics_url").eq("calendar_id", id).maybeSingle(); return data?.ics_url || ""; }
+  async syncNow(id) {
+    const { data, error } = await this.sb.functions.invoke("sync-ics", { body: { calendar_id: id } });
+    if (error) throw error;
+    if (data && data.errors && data.errors.length) throw new Error(data.errors[0]);
+  }
+  subscribe(cb) {
+    let t; const fire = () => { clearTimeout(t); t = setTimeout(cb, 400); };
+    this.sb.channel("agenda").on("postgres_changes", { event: "*", schema: "public", table: "events" }, fire)
+      .on("postgres_changes", { event: "*", schema: "public", table: "calendars" }, fire).subscribe();
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) cb(); });
+  }
+}
+
+/* ============================================================
+   TOESTAND + LOGICA
+   ============================================================ */
+const store = (CONFIG.supabaseUrl && CONFIG.supabaseAnonKey && window.supabase) ? new LiveStore() : new DemoStore();
+const state = {
+  view: ls.get("oa-view", innerWidth < 760 ? "3dagen" : "week"),
+  cursor: sod(new Date()),
+  hidden: new Set(ls.get("oa-hidden", [])),
+  calendars: [], events: [], syncing: new Set(),
+};
+const calById = id => state.calendars.find(c => c.id === id);
+const memberName = id => (store.members().find(m => m.user_id === id) || {}).display_name || "?";
+const isMine = c => c.owner_id === store.me;
+const canEditEvents = c => c && c.kind === "local";
+const visibleCal = c => !state.hidden.has(c.id);
+
+function bounds(ev) {
+  if (ev.all_day) { const s = fromKey(ev.start.slice(0, 10)), e = fromKey(ev.end.slice(0, 10)); return [s, e > s ? e : addDays(s, 1)]; }
+  return [new Date(ev.start), new Date(ev.end)];
+}
+function occurrences(from, to) {
+  const out = [];
+  for (const ev of state.events) {
+    const cal = calById(ev.calendar_id); if (!cal || !visibleCal(cal)) continue;
+    const [s0, e0] = bounds(ev);
+    const r = ev.rrule;
+    if (!r || !r.freq) { if (s0 < to && e0 > from) out.push({ ev, cal, s: s0, e: e0 }); continue; }
+    const dayDiff = Math.round((sod(e0) - sod(s0)) / 864e5);
+    const mkEnd = s => { const e = addDays(sod(s), dayDiff); e.setHours(e0.getHours(), e0.getMinutes()); return e; };
+    const step = i => r.freq === "daily" ? addDays(s0, i) : r.freq === "weekly" ? addDays(s0, 7 * i) : r.freq === "monthly" ? addMonths(s0, i) : addMonths(s0, 12 * i);
+    const until = r.until ? addDays(fromKey(r.until), 1) : null;
+    let i = 0;
+    if (from > s0) {
+      const days = Math.floor((from - s0) / 864e5);
+      i = Math.max(0, r.freq === "daily" ? days - dayDiff - 1 : r.freq === "weekly" ? Math.floor(days / 7) - 1 : r.freq === "monthly" ? Math.floor(days / 31) - 1 : Math.floor(days / 366) - 1);
+    }
+    for (let guard = 0; guard < 2000; guard++, i++) {
+      const s = step(i); if (s >= to || (until && s >= until)) break;
+      const e = mkEnd(s); if (e > from) out.push({ ev, cal, s, e, occ: i });
+    }
+  }
+  return out.sort((a, b) => a.s - b.s || (b.e - b.s) - (a.e - a.s));
+}
+const isAllDayish = o => o.ev.all_day;
+
+async function refresh() {
+  try {
+    const data = await store.load();
+    state.calendars = data.calendars; state.events = data.events;
+    render();
+    if (store.offline) toast("Geen verbinding: je ziet de laatst opgeslagen versie");
+  } catch (e) { toast("Laden mislukt: " + e.message); }
+}
+
+/* ============================================================
+   WEERGAVE
+   ============================================================ */
+function render() { renderBanner(); renderHeader(); renderDrawer(); renderView(); }
+
+function renderBanner() {
+  const b = $("#banner");
+  if (store.mode !== "demo") { b.innerHTML = ""; return; }
+  b.innerHTML = `<div class="inner"><span><b>Demo</b> · voorbeeldgegevens, enkel in deze browser</span>
+    <span style="display:flex;align-items:center;gap:6px">Bekijk als
+      <span class="seg" role="group">${store.members().map(m => `<button data-me="${m.user_id}" aria-pressed="${m.user_id === store.me}">${esc(m.display_name)}</button>`).join("")}</span></span></div>`;
+  b.querySelectorAll("[data-me]").forEach(btn => btn.onclick = () => { store.setMe(btn.dataset.me); refresh(); toast(`Je bekijkt de agenda nu als ${memberName(btn.dataset.me)}`); });
+}
+
+function rangeFor(view, c) {
+  if (view === "maand") { const f = sow(new Date(c.getFullYear(), c.getMonth(), 1)); return [f, addDays(f, 42)]; }
+  if (view === "week") { const f = sow(c); return [f, addDays(f, 7)]; }
+  if (view === "3dagen") return [sod(c), addDays(sod(c), 3)];
+  if (view === "dag") return [sod(c), addDays(sod(c), 1)];
+  return [sod(c), addDays(sod(c), 60)];
+}
+function renderHeader() {
+  const c = state.cursor, v = state.view; let t, sub = "";
+  if (v === "maand") t = `${MONTHS[c.getMonth()]} ${c.getFullYear()}`;
+  else if (v === "dag") { t = `${DOW_LONG[dow(c)]} ${c.getDate()} ${MONTHS[c.getMonth()]}`; sub = String(c.getFullYear()); }
+  else if (v === "planning") t = "Planning";
+  else { const [a, b] = rangeFor(v, c), e = addDays(b, -1);
+    t = a.getMonth() === e.getMonth() ? `${MONTHS[a.getMonth()]} ${a.getFullYear()}` : `${MON_S[a.getMonth()]} – ${MON_S[e.getMonth()]} ${e.getFullYear()}`;
+    if (v === "week") sub = `Week ${isoWeek(a)}`; }
+  $("#title").innerHTML = esc(t) + (sub ? `<small>${esc(sub)}</small>` : "");
+  document.querySelectorAll(".seg.views button").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === v));
+  $("#viewSel").value = v;
+  const me = store.members().find(m => m.user_id === store.me) || { display_name: "?", color: "#5b6275" };
+  const mb = $("#meBtn"); mb.textContent = (me.display_name || "?").slice(0, 1).toUpperCase(); mb.style.background = me.color || "#5b6275";
+}
+function isoWeek(d) { const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())); const n = t.getUTCDay() || 7; t.setUTCDate(t.getUTCDate() + 4 - n); const y = new Date(Date.UTC(t.getUTCFullYear(), 0, 1)); return Math.ceil(((t - y) / 864e5 + 1) / 7); }
+
+function calSub(c) {
+  const parts = [];
+  if (c.kind === "ics") parts.push(I.link + (c.last_error ? "Bijwerken mislukt" : c.last_synced_at ? "bijgewerkt " + relTime(c.last_synced_at) : "gekoppeld"));
+  else parts.push(c.visibility === "private" ? I.lock + "alleen jij" : I.users + "gedeeld");
+  if (!isMine(c)) parts.push("· van " + esc(memberName(c.owner_id)));
+  else if (c.kind === "ics") parts.push(c.visibility === "private" ? "· alleen jij" : "· gedeeld");
+  return parts.join(" ");
+}
+function relTime(iso) { const m = Math.round((Date.now() - new Date(iso)) / 6e4); if (m < 1) return "net"; if (m < 60) return `${m} min geleden`; const h = Math.round(m / 60); if (h < 24) return `${h} u geleden`; return fmtDate(new Date(iso)); }
+
+function renderDrawer() {
+  const groups = [
+    ["Mijn agenda's", state.calendars.filter(c => c.kind === "local" && isMine(c))],
+    ["Gedeeld door anderen", state.calendars.filter(c => c.kind === "local" && !isMine(c))],
+    ["Gekoppelde agenda's", state.calendars.filter(c => c.kind === "ics")],
+  ];
+  $("#drawer").innerHTML = groups.filter(g => g[1].length).map(([h, list]) => `<section><h3>${h}</h3>${list.map(c => `
+      <div class="cal-row" style="--c:${c.color}">
+        <input type="checkbox" id="vis-${c.id}" data-vis="${c.id}" ${visibleCal(c) ? "checked" : ""}>
+        <label class="nm" for="vis-${c.id}"><b>${esc(c.name)}</b><span>${calSub(c)}</span></label>
+        ${c.kind === "ics" && isMine(c) ? `<button class="icon-btn" data-sync="${c.id}" aria-label="Nu bijwerken" ${state.syncing.has(c.id) ? 'style="animation:spin 1s linear infinite"' : ""}>${I.sync}</button>` : ""}
+        ${isMine(c) || (c.kind === "local" && c.visibility === "shared") ? `<button class="icon-btn" data-editcal="${c.id}" aria-label="Agenda bewerken">${I.dots}</button>` : ""}
+      </div>`).join("")}</section>`).join("") + `
+    <section class="drawer-actions">
+      <button class="btn ghost" id="addCal">${I.plus} Nieuwe agenda</button>
+      <button class="btn ghost" id="addIcs">${I.link} Externe agenda koppelen</button>
+      <button class="btn ghost" id="openSettings">${I.gear} Account en instellingen</button>
+    </section>`;
+  const d = $("#drawer");
+  d.querySelectorAll("[data-vis]").forEach(cb => cb.onchange = () => { cb.checked ? state.hidden.delete(cb.dataset.vis) : state.hidden.add(cb.dataset.vis); ls.set("oa-hidden", [...state.hidden]); renderView(); });
+  d.querySelectorAll("[data-editcal]").forEach(b => b.onclick = () => openCalendarDialog(calById(b.dataset.editcal)));
+  d.querySelectorAll("[data-sync]").forEach(b => b.onclick = () => syncCal(b.dataset.sync));
+  $("#addCal").onclick = () => openCalendarDialog(null, "local");
+  $("#addIcs").onclick = () => openCalendarDialog(null, "ics");
+  $("#openSettings").onclick = openSettings;
+}
+async function syncCal(id) {
+  state.syncing.add(id); renderDrawer();
+  try { await store.syncNow(id); toast("Agenda bijgewerkt"); }
+  catch (e) { toast("Bijwerken mislukt: " + e.message); }
+  state.syncing.delete(id); await refresh();
+}
+
+function renderView() {
+  const v = state.view, el = $("#view");
+  if (v === "maand") el.innerHTML = monthHTML();
+  else if (v === "planning") el.innerHTML = agendaHTML();
+  else el.innerHTML = gridHTML(v === "dag" ? 1 : v === "3dagen" ? 3 : 7);
+  el.querySelectorAll("[data-occ]").forEach(b => b.onclick = ev => { ev.stopPropagation(); const [id, s] = b.dataset.occ.split("|"); openEventDetail(id, new Date(+s)); });
+  el.querySelectorAll("[data-day]").forEach(c => c.onclick = () => { state.cursor = fromKey(c.dataset.day); setView(innerWidth < 760 ? "dag" : "dag"); });
+  el.querySelectorAll(".tg-col").forEach(col => col.onclick = e => {
+    if (e.target !== col) return;
+    const mins = Math.floor((e.offsetY / parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--hour"))) * 2) * 30;
+    const s = fromKey(col.dataset.col); s.setMinutes(mins); openEventEditor(null, { start: s });
+  });
+  const sc = el.querySelector(".tg-scroll");
+  if (sc) { const h = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--hour")); sc.scrollTop = (sameDay(state.cursor, new Date()) || state.view === "week" ? Math.max(0, new Date().getHours() - 2) : 7) * h; }
+}
+const occAttr = o => `data-occ="${o.ev.id}|${o.s.getTime()}"`;
+const lockIco = o => o.cal.visibility === "private" ? I.lock : "";
+
+function monthHTML() {
+  const c = state.cursor, [from, to] = rangeFor("maand", c), occ = occurrences(from, to), today = new Date();
+  let cells = "";
+  for (let i = 0; i < 42; i++) {
+    const d = addDays(from, i), dn = addDays(d, 1);
+    const items = occ.filter(o => o.s < dn && o.e > d);
+    const max = innerWidth < 760 ? 2 : 3;
+    cells += `<div class="mcell ${d.getMonth() !== c.getMonth() ? "out" : ""} ${sameDay(d, today) ? "today" : ""}" data-day="${dkey(d)}">
+      <span class="dn tab">${d.getDate()}</span>
+      ${items.slice(0, max).map(o => {
+        return o.ev.all_day ? `<button class="mchip fill" style="${cv(o.cal.color)}" ${occAttr(o)}><span class="x">${esc(o.ev.title)}</span></button>`
+          : `<button class="mchip" style="${cv(o.cal.color)}" ${occAttr(o)}><span class="dot"></span><span class="t tab">${sameDay(o.s, d) ? hm(o.s) : "…"}</span><span class="x">${esc(o.ev.title)}</span></button>`;
+      }).join("")}
+      ${items.length > max ? `<span class="more">+${items.length - max} meer</span>` : ""}
+    </div>`;
+  }
+  return `<div class="month"><div class="dow">${DOW.map(d => `<div>${d}</div>`).join("")}</div><div class="cells">${cells}</div></div>`;
+}
+
+function gridHTML(n) {
+  const [from, to] = rangeFor(n === 7 ? "week" : n === 3 ? "3dagen" : "dag", state.cursor);
+  const occ = occurrences(from, to), days = [...Array(n)].map((_, i) => addDays(from, i)), today = new Date();
+  const H = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--hour")) || 48;
+  const allday = occ.filter(isAllDayish);
+  const head = days.map(d => `<div class="d ${sameDay(d, today) ? "today" : ""}" data-day="${dkey(d)}"><small>${DOW[dow(d)]}</small><b class="tab">${d.getDate()}</b></div>`).join("");
+  const adRow = days.map(d => { const dn = addDays(d, 1); return `<div class="c">${allday.filter(o => o.s < dn && o.e > d).map(o => `<button class="mchip fill" style="${cv(o.cal.color)}" ${occAttr(o)}><span class="x">${esc(o.ev.title)}</span></button>`).join("")}</div>`; }).join("");
+  const cols = days.map(d => {
+    const dn = addDays(d, 1);
+    const items = occ.filter(o => !isAllDayish(o) && o.s < dn && o.e > d).map(o => {
+      const a = Math.max(0, (o.s - d) / 6e4), b = Math.min(1440, (o.e - d) / 6e4);
+      return { o, a, b: Math.max(b, a + 22) };
+    });
+    layoutDay(items);
+    const evs = items.map(it => {
+      const top = it.a / 60 * H, h = (it.b - it.a) / 60 * H - 2, w = 100 / it.ncol;
+      const short = h < 34;
+      return `<button class="ev" style="${cv(it.o.cal.color)};top:${top}px;height:${h}px;left:calc(${it.col * w}% + 1px);width:calc(${w}% - 3px)" ${occAttr(it.o)}>
+        <b>${lockIco(it.o)} ${esc(it.o.ev.title)}${short ? ` <span class="tab">${hm(it.o.s)}</span>` : ""}</b>${short ? "" : `<span class="tab">${hm(it.o.s)} – ${hm(it.o.e)}</span>`}</button>`;
+    }).join("");
+    const now = sameDay(d, today) ? `<div class="nowline" style="top:${(today.getHours() * 60 + today.getMinutes()) / 60 * H}px"></div>` : "";
+    return `<div class="tg-col ${sameDay(d, today) ? "today" : ""}" data-col="${dkey(d)}">${evs}${now}</div>`;
+  }).join("");
+  const hours = [...Array(23)].map((_, i) => `<span class="tab" style="top:${(i + 1) * H}px">${pad(i + 1)}:00</span>`).join("");
+  return `<div class="tg" style="--n:${n}">
+    <div class="tg-row tg-head"><div></div>${head}</div>
+    ${allday.length ? `<div class="tg-row tg-allday"><div class="lab">hele dag</div>${adRow}</div>` : ""}
+    <div class="tg-scroll"><div class="tg-row tg-body"><div class="tg-hours">${hours}</div>${cols}</div></div></div>`;
+}
+function layoutDay(items) {
+  items.sort((x, y) => x.a - y.a || y.b - x.b);
+  const clusters = []; let cur = [], end = -1;
+  for (const it of items) { if (cur.length && it.a >= end) { clusters.push(cur); cur = []; end = -1; } cur.push(it); end = Math.max(end, it.b); }
+  if (cur.length) clusters.push(cur);
+  for (const cl of clusters) { const cols = []; for (const it of cl) { let c = cols.findIndex(e => e <= it.a); if (c < 0) { c = cols.length; cols.push(0); } cols[c] = it.b; it.col = c; } cl.forEach(it => it.ncol = cols.length); }
+}
+
+function agendaHTML() {
+  const [from, to] = rangeFor("planning", state.cursor), occ = occurrences(from, to), today = new Date();
+  let html = "";
+  for (let i = 0; i < 60; i++) {
+    const d = addDays(from, i), dn = addDays(d, 1), items = occ.filter(o => o.s < dn && o.e > d);
+    if (!items.length) continue;
+    html += `<div class="day"><div class="dd ${sameDay(d, today) ? "today" : ""}"><small>${DOW[dow(d)]}</small><b class="tab">${d.getDate()}</b><small>${MON_S[d.getMonth()]}</small></div><ul>
+      ${items.map(o => `<li><button class="aitem" style="${cv(o.cal.color)}" ${occAttr(o)}><span class="dot"></span><span class="tx"><b>${esc(o.ev.title)}</b>
+        <span class="tab">${o.ev.all_day ? "Hele dag" : (sameDay(o.s, d) ? hm(o.s) : "…") + " – " + (sameDay(o.e, d) || +o.e === +dn ? hm(o.e) : "…")} · ${esc(o.cal.name)}${o.ev.location ? " · " + esc(o.ev.location) : ""}</span></span>${lockIco(o)}</button></li>`).join("")}
+      </ul></div>`;
+  }
+  return `<div class="agenda">${html || `<p class="empty">Geen afspraken in de komende 60 dagen.</p>`}</div>`;
+}
+
+/* ============================================================
+   DIALOGEN
+   ============================================================ */
+const dlg = $("#dlg");
+function openDialog(html, onMount) { dlg.innerHTML = `<div class="dlg">${html}</div>`; dlg.showModal(); dlg.querySelectorAll("[data-close]").forEach(b => b.onclick = () => dlg.close()); onMount && onMount(dlg); }
+dlg.addEventListener("click", e => { if (e.target === dlg) dlg.close(); });
+
+function freqLabel(r) { if (!r || !r.freq) return ""; const m = { daily: "Elke dag", weekly: "Elke week", monthly: "Elke maand", yearly: "Elk jaar" }[r.freq]; return m + (r.until ? ` tot ${fmtDate(fromKey(r.until))}` : ""); }
+
+function openEventDetail(id, occStart) {
+  const ev = state.events.find(e => e.id === id); if (!ev) return;
+  const cal = calById(ev.calendar_id);
+  const [s0, e0] = bounds(ev), s = occStart, e = new Date(s.getTime() + (e0 - s0));
+  const when = ev.all_day
+    ? (sameDay(s, addDays(e, -1)) ? `${DOW_LONG[dow(s)]} ${fmtDate(s)} · hele dag` : `${fmtDate(s)} – ${fmtDate(addDays(e, -1))} · hele dag`)
+    : sameDay(s, e) || (e.getHours() === 0 && e.getMinutes() === 0 && sameDay(addDays(e, -1), s)) ? `${DOW_LONG[dow(s)]} ${fmtDate(s)} · ${hm(s)} – ${hm(e)}` : `${fmtDate(s)} ${hm(s)} – ${fmtDate(e)} ${hm(e)}`;
+  const editable = canEditEvents(cal);
+  openDialog(`
+    <div class="dlg-head"><h2>${esc(ev.title)}</h2><button class="icon-btn" data-close aria-label="Sluiten">${I.x}</button></div>
+    <div class="dlg-body">
+      <div class="detail-line">${I.clock}<div class="tab">${esc(when)}${ev.rrule ? `<br><span style="color:var(--muted)">${esc(freqLabel(ev.rrule))}</span>` : ""}</div></div>
+      ${ev.location ? `<div class="detail-line">${I.pin}<div>${esc(ev.location)}</div></div>` : ""}
+      ${ev.notes ? `<div class="detail-line">${I.text}<div style="white-space:pre-wrap;overflow-wrap:anywhere">${esc(ev.notes)}</div></div>` : ""}
+      <div class="detail-line" style="--c:${cal.color}"><span class="sw"></span><div>${esc(cal.name)} <span style="color:var(--muted)">· ${cal.kind === "ics" ? "gekoppeld" : cal.visibility === "private" ? "privé, alleen " + esc(memberName(cal.owner_id)) + " ziet dit" : "gedeeld"}</span></div></div>
+      ${!editable ? `<p class="note">Deze afspraak komt uit <b>${esc(cal.name)}</b>. Wijzigen doe je in de bron (dienstplanner.be of Google Agenda); de app neemt de wijziging automatisch over.</p>` : ""}
+    </div>
+    ${editable ? `<div class="dlg-foot"><button class="btn danger" id="delEv">Verwijderen</button><span class="spacer"></span><button class="btn" id="dupEv">Kopiëren</button><button class="btn primary" id="editEv">Bewerken</button></div>` : ""}`,
+    d => {
+      if (!editable) return;
+      $("#editEv", d).onclick = () => openEventEditor(ev);
+      $("#dupEv", d).onclick = () => openEventEditor({ ...ev, id: null, rrule: null, start: ev.all_day ? allDayIso(s) : s.toISOString(), end: ev.all_day ? allDayIso(e) : e.toISOString() });
+      const del = $("#delEv", d);
+      del.onclick = async () => {
+        if (del.dataset.sure !== "1") { del.dataset.sure = "1"; del.textContent = ev.rrule ? "Hele reeks verwijderen?" : "Zeker verwijderen?"; return; }
+        try { await store.deleteEvent(ev.id); dlg.close(); toast("Afspraak verwijderd"); refresh(); } catch (er) { toast(er.message); }
+      };
+    });
+}
+
+function editableCals() { return state.calendars.filter(c => c.kind === "local" && (isMine(c) || c.visibility === "shared")); }
+
+function openEventEditor(ev, preset = {}) {
+  const cals = editableCals();
+  if (!cals.length) { toast("Maak eerst een agenda aan"); return; }
+  let s, e, allDay = !!(ev && ev.all_day);
+  if (ev) { [s, e] = bounds(ev); if (allDay) e = addDays(e, -1); }
+  else { s = preset.start || (() => { const d = new Date(state.cursor); const n = new Date(); d.setHours(sameDay(d, n) ? n.getHours() + 1 : 9, 0, 0, 0); return d; })(); e = new Date(s.getTime() + 36e5); }
+  const lastCal = ls.get("oa-lastcal", null);
+  const calId = ev ? ev.calendar_id : (cals.find(c => c.id === lastCal) ? lastCal : (cals.find(c => c.visibility === "shared") || cals[0]).id);
+  const r = (ev && ev.rrule) || {};
+  openDialog(`
+    <div class="dlg-head"><h2>${ev && ev.id ? "Afspraak bewerken" : "Nieuwe afspraak"}</h2><button class="icon-btn" data-close aria-label="Sluiten">${I.x}</button></div>
+    <form class="dlg-body" id="evForm" novalidate>
+      <input class="inp big" id="f-title" placeholder="Titel" value="${esc(ev ? ev.title : "")}" required autocomplete="off">
+      <div class="field"><label for="f-cal">Agenda</label>
+        <select class="inp" id="f-cal">${cals.map(c => `<option value="${c.id}" ${c.id === calId ? "selected" : ""}>${esc(c.name)} — ${c.visibility === "private" ? "privé" : "gedeeld"}${!isMine(c) ? " (van " + esc(memberName(c.owner_id)) + ")" : ""}</option>`).join("")}</select></div>
+      <p class="note" id="f-privnote" hidden></p>
+      <label class="check"><input type="checkbox" id="f-allday" ${allDay ? "checked" : ""}> Hele dag</label>
+      <div class="row">
+        <div class="field"><label for="f-sd">Begin</label>${dateField("f-sd", dkey(s))}</div>
+        <div class="field" data-time><label for="f-st">&nbsp;</label><input class="inp tab" inputmode="numeric" placeholder="uu:mm" maxlength="5" list="times24" autocomplete="off" id="f-st" value="${hm(s)}"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label for="f-ed">Einde</label>${dateField("f-ed", dkey(e))}</div>
+        <div class="field" data-time><label for="f-et">&nbsp;</label><input class="inp tab" inputmode="numeric" placeholder="uu:mm" maxlength="5" list="times24" autocomplete="off" id="f-et" value="${hm(e)}"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label for="f-rr">Herhalen</label>
+          <select class="inp" id="f-rr">${[["", "Niet herhalen"], ["daily", "Elke dag"], ["weekly", "Elke week"], ["monthly", "Elke maand"], ["yearly", "Elk jaar"]].map(([v, l]) => `<option value="${v}" ${(r.freq || "") === v ? "selected" : ""}>${l}</option>`).join("")}</select></div>
+        <div class="field" id="f-untilwrap"><label for="f-until">Tot en met (leeg = altijd)</label>${dateField("f-until", r.until || "")}</div>
+      </div>
+      <div class="field"><label for="f-loc">Locatie</label><input class="inp" id="f-loc" value="${esc(ev ? ev.location : "")}" autocomplete="off"></div>
+      <div class="field"><label for="f-notes">Notities</label><textarea class="inp" id="f-notes">${esc(ev ? ev.notes : "")}</textarea></div>
+      <div class="err" id="f-err"></div>
+      <datalist id="times24">${[...Array(96)].map((_, i) => `<option value="${pad(Math.floor(i / 4))}:${pad(i % 4 * 15)}">`).join("")}</datalist>
+    </form>
+    <div class="dlg-foot"><button class="btn" data-close>Annuleren</button><button class="btn primary" id="f-save">Opslaan</button></div>`,
+    d => {
+      const sync = () => {
+        const ad = $("#f-allday", d).checked; d.querySelectorAll("[data-time]").forEach(x => x.hidden = ad);
+        $("#f-untilwrap", d).hidden = !$("#f-rr", d).value;
+        const c = calById($("#f-cal", d).value), pn = $("#f-privnote", d);
+        pn.hidden = false;
+        pn.innerHTML = c.visibility === "private" ? `${I.lock.replace('class="i"', 'class="i" style="width:14px;height:14px;vertical-align:-2px"')} <b>Privé:</b> enkel jij ziet deze afspraak.` : `<b>Gedeeld:</b> iedereen in jullie huishouden ziet deze afspraak.`;
+      };
+      ["#f-allday", "#f-rr", "#f-cal"].forEach(id => $(id, d).onchange = sync); sync();
+      const gd = id => normDate($(id, d).value), setD = (id, k) => { $(id, d).value = fmtDate(fromKey(k)); };
+      d.querySelectorAll("[data-pick]").forEach(b => b.onclick = () => {
+        const pk = d.querySelector(`.picker[data-for="${b.dataset.pick}"]`), k = normDate($("#" + b.dataset.pick, d).value);
+        pk.value = k || dkey(new Date());
+        try { pk.showPicker(); } catch { pk.focus(); pk.click(); }
+      });
+      d.querySelectorAll(".picker").forEach(pk => pk.onchange = () => {
+        if (!pk.value) return; const t = $("#" + pk.dataset.for, d); t.value = fmtDate(fromKey(pk.value)); t.dispatchEvent(new Event("change"));
+      });
+      ["#f-ed", "#f-until"].forEach(id => $(id, d).addEventListener("change", () => { const k = gd(id); if (k) setD(id, k); }));
+      $("#f-sd", d).onchange = () => { // einddatum mee laten schuiven
+        const k = gd("#f-sd"), ke = gd("#f-ed"); if (!k) return; setD("#f-sd", k);
+        if (!ke) { setD("#f-ed", k); s = fromKey(k); return; }
+        const ns = fromKey(k), os = fromKey(dkey(s)), oe = fromKey(ke);
+        setD("#f-ed", dkey(addDays(ns, Math.round((oe - os) / 864e5)))); s = ns;
+      };
+      $("#f-et", d).onchange = () => { const n = normTime($("#f-et", d).value); if (n) $("#f-et", d).value = n; };
+      $("#f-st", d).onchange = () => { // duur behouden
+        const ns = normTime($("#f-st", d).value), ne0 = normTime($("#f-et", d).value);
+        if (!ns || !ne0) return; $("#f-st", d).value = ns;
+        const [h, m] = $("#f-st", d).value.split(":").map(Number), [eh, em] = $("#f-et", d).value.split(":").map(Number);
+        const dur = (eh * 60 + em) - (s.getHours() * 60 + s.getMinutes());
+        const st = new Date(s); st.setHours(h, m); s = st;
+        if (gd("#f-sd") === gd("#f-ed") && dur > 0) { const ne = new Date(st.getTime() + dur * 6e4); $("#f-et", d).value = hm(ne); if (!sameDay(ne, st)) setD("#f-ed", dkey(ne)); }
+      };
+      setTimeout(() => !ev && $("#f-title", d).focus(), 50);
+      const save = async () => {
+        const title = $("#f-title", d).value.trim(), err = $("#f-err", d);
+        if (!title) { err.textContent = "Geef de afspraak een titel."; return; }
+        const ad = $("#f-allday", d).checked;
+        let start, end;
+        const k1 = gd("#f-sd"), k2 = gd("#f-ed");
+        if (!k1 || !k2) { err.textContent = "Vul de datum in als dd/mm/jjjj, bv. 23/10/2026."; return; }
+        const ku = $("#f-until", d).value.trim() ? gd("#f-until") : null;
+        if ($("#f-rr", d).value && $("#f-until", d).value.trim() && !ku) { err.textContent = "De datum bij 'Tot en met' klopt niet (dd/mm/jjjj)."; return; }
+        if (ad) { const sd = fromKey(k1), ed = fromKey(k2); if (ed < sd) { err.textContent = "De einddatum ligt voor de begindatum."; return; } start = allDayIso(sd); end = allDayIso(addDays(ed, 1)); }
+        else {
+          const t1 = normTime($("#f-st", d).value), t2 = normTime($("#f-et", d).value);
+          if (!t1 || !t2) { err.textContent = "Vul de uren in als uu:mm, bv. 10:00 of 23:30."; return; }
+          $("#f-st", d).value = t1; $("#f-et", d).value = t2;
+          const sd = new Date(`${k1}T${t1}`), ed = new Date(`${k2}T${t2}`);
+          if (isNaN(sd) || isNaN(ed)) { err.textContent = "Vul een geldige datum en tijd in."; return; }
+          if (ed <= sd) { err.textContent = "Het einde moet na het begin liggen."; return; }
+          start = sd.toISOString(); end = ed.toISOString();
+        }
+        const freq = $("#f-rr", d).value;
+        const out = { id: ev && ev.id || undefined, calendar_id: $("#f-cal", d).value, title, start, end, all_day: ad, location: $("#f-loc", d).value.trim(), notes: $("#f-notes", d).value.trim(), rrule: freq ? { freq, until: ku } : null };
+        const btn = $("#f-save", d); btn.disabled = true;
+        try { await store.saveEvent(out); ls.set("oa-lastcal", out.calendar_id); dlg.close(); toast(ev && ev.id ? "Afspraak bijgewerkt" : "Afspraak toegevoegd"); refresh(); }
+        catch (er) { err.textContent = "Opslaan mislukt: " + er.message; btn.disabled = false; }
+      };
+      $("#f-save", d).onclick = save;
+      $("#evForm", d).onsubmit = ev2 => { ev2.preventDefault(); save(); };
+    });
+}
+
+async function openCalendarDialog(cal, kind) {
+  const isNew = !cal; kind = cal ? cal.kind : kind;
+  const c = cal || { name: "", color: kind === "ics" ? COLORS[5] : COLORS[2], visibility: "shared", kind };
+  const mine = isNew || isMine(c);
+  const url = (!isNew && kind === "ics" && mine) ? await store.getIcsUrl(c.id) : "";
+  let color = c.color;
+  openDialog(`
+    <div class="dlg-head"><h2>${isNew ? (kind === "ics" ? "Externe agenda koppelen" : "Nieuwe agenda") : "Agenda instellen"}</h2><button class="icon-btn" data-close aria-label="Sluiten">${I.x}</button></div>
+    <form class="dlg-body" id="calForm" novalidate>
+      ${kind === "ics" ? `<p class="note">Plak de <b>iCal-link</b> (begint met https:// of webcal://, eindigt meestal op .ics). De app haalt deze agenda om de 15 minuten opnieuw op.<br><br>
+        <b>Dienstplanner:</b> koppel dienstplanner.be aan je Google-agenda en gebruik daarvan het geheime iCal-adres (zie hieronder).<br>
+        <b>Google Agenda:</b> instellingen van de agenda › Agenda integreren › <i>Geheim adres in iCal-indeling</i>.</p>
+        <div class="field"><label for="c-url">iCal-link</label><input class="inp" id="c-url" type="url" inputmode="url" placeholder="https://…/agenda.ics" value="${esc(url)}" ${mine ? "" : "disabled"} autocomplete="off"></div>` : ""}
+      <div class="field"><label for="c-name">Naam</label><input class="inp" id="c-name" value="${esc(c.name)}" placeholder="${kind === "ics" ? "bv. Werk (dienstplanner)" : "bv. Samen, Kinderen, Sport"}" ${mine || c.visibility === "shared" ? "" : "disabled"} autocomplete="off"></div>
+      <div class="field"><span class="lbl">Kleur</span><div class="swatch-row">
+        <div class="swatches">${COLORS.map(x => `<button type="button" style="--c:${x}" data-col="${x}" aria-label="Donkere kleur ${x}" aria-pressed="${x === color}"></button>`).join("")}</div>
+        <div class="swatches">${LIGHT.map(x => `<button type="button" style="--c:${x}" data-col="${x}" aria-label="Lichte kleur ${x}" aria-pressed="${x === color}"></button>`).join("")}</div>
+        <label class="own-color"><input type="color" id="c-own" value="${esc(color)}"> Eigen kleur kiezen</label></div></div>
+      ${mine ? `<div class="field"><span class="lbl">Wie ziet deze agenda?</span><div class="radio-cards">
+        <label><input type="radio" name="vis" value="shared" ${c.visibility !== "private" ? "checked" : ""}><span><b>Gedeeld</b>Iedereen in jullie huishouden</span></label>
+        <label><input type="radio" name="vis" value="private" ${c.visibility === "private" ? "checked" : ""}><span><b>Privé</b>Alleen jij</span></label></div></div>` : ""}
+      ${!isNew && kind === "ics" && c.last_error ? `<p class="err">Laatste fout: ${esc(c.last_error)}</p>` : ""}
+      <div class="err" id="c-err"></div>
+    </form>
+    <div class="dlg-foot">${!isNew && mine ? `<button class="btn danger" id="c-del">Verwijderen</button><span class="spacer"></span>` : ""}<button class="btn" data-close>Annuleren</button><button class="btn primary" id="c-save">${isNew && kind === "ics" ? "Koppelen" : "Opslaan"}</button></div>`,
+    d => {
+      d.querySelectorAll("[data-col]").forEach(b => b.onclick = () => { color = b.dataset.col; $("#c-own", d).value = color; d.querySelectorAll("[data-col]").forEach(x => x.setAttribute("aria-pressed", x === b)); });
+      $("#c-own", d).oninput = e => { color = e.target.value; d.querySelectorAll("[data-col]").forEach(x => x.setAttribute("aria-pressed", x.dataset.col === color)); };
+      const del = $("#c-del", d);
+      if (del) del.onclick = async () => {
+        if (del.dataset.sure !== "1") { del.dataset.sure = "1"; del.textContent = "Agenda en alle afspraken wissen?"; return; }
+        try { await store.deleteCalendar(c.id); dlg.close(); toast("Agenda verwijderd"); refresh(); } catch (e) { toast(e.message); }
+      };
+      const save = async () => {
+        const err = $("#c-err", d), name = $("#c-name", d).value.trim();
+        const vis = (d.querySelector("input[name=vis]:checked") || {}).value || c.visibility;
+        let u = kind === "ics" ? $("#c-url", d).value.trim().replace(/^webcal:\/\//i, "https://") : "";
+        if (!name) { err.textContent = "Geef de agenda een naam."; return; }
+        if (kind === "ics" && mine && !/^https?:\/\/.+/i.test(u)) { err.textContent = "Plak een geldige link die begint met https:// of webcal://"; return; }
+        const btn = $("#c-save", d); btn.disabled = true; btn.textContent = kind === "ics" ? "Bezig met ophalen…" : "Opslaan…";
+        try {
+          await store.saveCalendar({ ...c, name, color, visibility: vis, kind, ics_url: kind === "ics" && mine ? u : undefined, demo: c.demo || (kind === "ics" ? (/google/i.test(u) ? "google" : "dienst") : undefined) });
+          dlg.close(); toast(isNew ? (kind === "ics" ? "Agenda gekoppeld" : "Agenda aangemaakt") : "Opgeslagen"); refresh();
+        } catch (e) { err.textContent = e.message; btn.disabled = false; btn.textContent = "Opnieuw proberen"; }
+      };
+      $("#c-save", d).onclick = save; $("#calForm", d).onsubmit = e => { e.preventDefault(); save(); };
+    });
+}
+
+function openSettings() {
+  closeDrawer();
+  const hh = store.household(), me = store.members().find(m => m.user_id === store.me) || {};
+  const live = store.mode === "live";
+  openDialog(`
+    <div class="dlg-head"><h2>Account en instellingen</h2><button class="icon-btn" data-close aria-label="Sluiten">${I.x}</button></div>
+    <div class="dlg-body">
+      <div class="detail-line">${I.user}<div><b>${esc(me.display_name || "")}</b><br><span style="color:var(--muted)">${live ? esc(store.session.user.email) : "demo-account"}</span></div></div>
+      <div class="detail-line">${I.users}<div><b>${esc(hh.name || "Huishouden")}</b><br><span style="color:var(--muted)">Leden: ${store.members().map(m => esc(m.display_name)).join(", ")}</span></div></div>
+      <div class="note"><b>Partner uitnodigen</b><br>Laat je partner de app installeren, een account maken en kiezen voor "Bij bestaand huishouden aansluiten" met deze code:<br>
+        <span style="display:flex;gap:8px;align-items:center;margin-top:8px"><code class="k" id="inv">${esc(hh.invite_code || "")}</code><button class="btn" id="copyInv">Kopiëren</button></span></div>
+      <div class="note"><b>Waar staan je gegevens?</b><br>${live
+        ? "Veilig online in jullie eigen Supabase-database (Europa). App verwijderd of gsm kwijt? Gewoon opnieuw inloggen op een ander toestel en alles staat er terug."
+        : "Nu in demomodus: alles staat enkel in deze browser. Zodra de Supabase-gegevens ingevuld zijn, staat alles online en kan je op elk toestel inloggen."}</div>
+      <button class="btn" id="exportBtn">${I.cal} Reservekopie downloaden (.ics)</button>
+      ${live ? "" : `<button class="btn" id="resetDemo">Demo terugzetten naar voorbeeldgegevens</button>`}
+    </div>
+    <div class="dlg-foot">${live ? `<button class="btn danger" id="logout">Afmelden</button><span class="spacer"></span>` : ""}<button class="btn primary" data-close>Klaar</button></div>`,
+    d => {
+      $("#copyInv", d).onclick = async () => { try { await navigator.clipboard.writeText(hh.invite_code); toast("Code gekopieerd"); } catch { const r = document.createRange(); r.selectNodeContents($("#inv", d)); getSelection().removeAllRanges(); getSelection().addRange(r); } };
+      $("#exportBtn", d).onclick = exportIcs;
+      const rd = $("#resetDemo", d); if (rd) rd.onclick = () => { store.reset(); dlg.close(); refresh(); toast("Voorbeeldgegevens hersteld"); };
+      const lo = $("#logout", d); if (lo) lo.onclick = async () => { await store.signOut(); location.reload(); };
+    });
+}
+
+function exportIcs() {
+  const own = state.events.filter(e => { const c = calById(e.calendar_id); return c && c.kind === "local"; });
+  const f = (iso, ad) => ad ? iso.slice(0, 10).replace(/-/g, "") : new Date(iso).toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
+  const escI = s => String(s || "").replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/[,;]/g, m => "\\" + m);
+  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Hagenda//NL"];
+  for (const e of own) {
+    lines.push("BEGIN:VEVENT", `UID:${e.id}@hagenda`, `DTSTAMP:${f(new Date().toISOString())}`,
+      e.all_day ? `DTSTART;VALUE=DATE:${f(e.start, 1)}` : `DTSTART:${f(e.start)}`, e.all_day ? `DTEND;VALUE=DATE:${f(e.end, 1)}` : `DTEND:${f(e.end)}`,
+      `SUMMARY:${escI(e.title)}`, `CATEGORIES:${escI(calById(e.calendar_id).name)}`);
+    if (e.location) lines.push(`LOCATION:${escI(e.location)}`);
+    if (e.notes) lines.push(`DESCRIPTION:${escI(e.notes)}`);
+    if (e.rrule) lines.push(`RRULE:FREQ=${e.rrule.freq.toUpperCase()}${e.rrule.until ? ";UNTIL=" + e.rrule.until.replace(/-/g, "") : ""}`);
+    lines.push("END:VEVENT");
+  }
+  lines.push("END:VCALENDAR");
+  try {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([lines.join("\r\n")], { type: "text/calendar" }));
+    a.download = `hagenda-${dkey(new Date())}.ics`; document.body.appendChild(a); a.click(); a.remove();
+    toast(`${own.length} afspraken geëxporteerd`);
+  } catch { toast("Downloaden lukt niet in deze voorbeeldweergave"); }
+}
+
+/* ---------- inloggen (alleen in cloudmodus) ---------- */
+function showAuth(step = "login", msg = "") {
+  const a = $("#auth"); a.hidden = false;
+  if (step === "household") {
+    a.innerHTML = `<div class="auth-card"><div class="logo">H</div><h1>Bijna klaar</h1><p>Start een nieuw huishouden, of sluit aan bij dat van je partner met de uitnodigingscode.</p>
+      <div class="field"><label for="a-dn">Je naam (zoals de ander je ziet)</label><input class="inp" id="a-dn" autocomplete="nickname"></div>
+      <div class="radio-cards"><label><input type="radio" name="hh" value="new" checked><span><b>Nieuw</b>Ik start</span></label><label><input type="radio" name="hh" value="join"><span><b>Aansluiten</b>Ik heb een code</span></label></div>
+      <div class="field" id="a-codew" hidden><label for="a-code">Uitnodigingscode</label><input class="inp" id="a-code" autocomplete="off" style="text-transform:uppercase"></div>
+      <div class="err" id="a-err">${esc(msg)}</div><button class="btn primary" id="a-go" style="height:44px;justify-content:center">Verder</button>
+      <p style="font-size:13px">Ingelogd als <b>${esc(store.session?.user?.email || "")}</b></p>
+      <button class="btn ghost" type="button" id="a-out">Ander account gebruiken</button></div>`;
+    $("#a-out").onclick = async () => { try { await store.sb.auth.signOut({ scope: "local" }); } catch {} location.reload(); };
+    a.querySelectorAll("input[name=hh]").forEach(r => r.onchange = () => $("#a-codew").hidden = r.value !== "join" || !r.checked);
+    $("#a-go").onclick = async () => {
+      const dn = $("#a-dn").value.trim(), join = a.querySelector("input[name=hh]:checked").value === "join";
+      if (!dn) { $("#a-err").textContent = "Vul je naam in."; return; }
+      try { join ? await store.joinHousehold($("#a-code").value, dn) : await store.createHousehold("Ons huishouden", dn); a.hidden = true; boot2(); }
+      catch (e) {
+        $("#a-err").textContent = /code/i.test(e.message) ? "Die code klopt niet. Vraag ze opnieuw na."
+          : /foreign key|violates|not.*found/i.test(e.message) ? "Dit account bestaat niet meer. Klik op 'Ander account gebruiken'." : e.message;
+      }
+    };
+    return;
+  }
+  a.innerHTML = `<form class="auth-card" id="a-form" novalidate><div class="logo">H</div><h1>Hagenda</h1><p>Log in om jullie gedeelde agenda te zien. Je gegevens staan online, dus op een nieuwe gsm log je gewoon opnieuw in.</p>
+    <div class="field"><label for="a-email">E-mailadres</label><input class="inp" id="a-email" type="email" autocomplete="email" inputmode="email"></div>
+    <div class="field"><label for="a-pw">Wachtwoord</label><input class="inp" id="a-pw" type="password" autocomplete="current-password" minlength="8"></div>
+    <div class="err" id="a-err">${esc(msg)}</div>
+    <button class="btn primary" style="height:44px;justify-content:center">Inloggen</button>
+    <button class="btn ghost" type="button" id="a-new">Nog geen account? Account maken</button></form>`;
+  const go = async signup => {
+    const em = $("#a-email").value.trim(), pw = $("#a-pw").value;
+    if (!em || pw.length < 8) { $("#a-err").textContent = "Vul je e-mailadres en een wachtwoord van minstens 8 tekens in."; return; }
+    try { signup ? await store.signUp(em, pw) : await store.signIn(em, pw); const r = await store.loadProfile(); if (r === "nohousehold") showAuth("household"); else { a.hidden = true; boot2(); } }
+    catch (e) { $("#a-err").textContent = /invalid login/i.test(e.message) ? "E-mailadres of wachtwoord klopt niet." : e.message; }
+  };
+  $("#a-form").onsubmit = e => { e.preventDefault(); go(false); };
+  $("#a-new").onclick = () => go(true);
+}
+
+/* ---------- algemeen ---------- */
+let toastT;
+function toast(msg) { const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2600); }
+function setView(v) { state.view = v; ls.set("oa-view", v); renderHeader(); renderView(); }
+function move(dir) {
+  const v = state.view, c = state.cursor;
+  state.cursor = v === "maand" ? addMonths(new Date(c.getFullYear(), c.getMonth(), 1), dir) : addDays(c, dir * (v === "week" ? 7 : v === "3dagen" ? 3 : v === "planning" ? 30 : 1));
+  renderHeader(); renderView();
+}
+function closeDrawer() { $("#shell").classList.remove("open"); }
+$("#menuBtn").onclick = () => $("#shell").classList.toggle("open");
+$("#scrim").onclick = closeDrawer;
+$("#todayBtn").onclick = () => { state.cursor = sod(new Date()); renderHeader(); renderView(); };
+$("#prevBtn").onclick = () => move(-1);
+$("#nextBtn").onclick = () => move(1);
+document.querySelectorAll(".seg.views button").forEach(b => b.onclick = () => setView(b.dataset.v));
+$("#viewSel").onchange = e => setView(e.target.value);
+$("#fab").onclick = () => openEventEditor(null);
+$("#meBtn").onclick = openSettings;
+addEventListener("keydown", e => {
+  if (dlg.open || /input|textarea|select/i.test(e.target.tagName)) return;
+  const k = { ArrowLeft: () => move(-1), ArrowRight: () => move(1), t: () => $("#todayBtn").click(), n: () => openEventEditor(null), d: () => setView("dag"), w: () => setView("week"), m: () => setView("maand") }[e.key];
+  if (k) { e.preventDefault(); k(); }
+});
+// swipen op gsm
+let tx = null;
+$("#view").addEventListener("touchstart", e => { tx = e.touches.length === 1 ? [e.touches[0].clientX, e.touches[0].clientY] : null; }, { passive: true });
+$("#view").addEventListener("touchend", e => { if (!tx) return; const dx = e.changedTouches[0].clientX - tx[0], dy = e.changedTouches[0].clientY - tx[1]; if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.5) move(dx < 0 ? 1 : -1); tx = null; }, { passive: true });
+let lastW = innerWidth; addEventListener("resize", () => { if (Math.abs(innerWidth - lastW) > 50) { lastW = innerWidth; renderView(); } });
+setInterval(() => { if (!dlg.open && state.view !== "planning" && state.view !== "maand") renderView(); }, 60000);
+const sty = document.createElement("style"); sty.textContent = "@keyframes spin{to{transform:rotate(360deg)}}"; document.head.appendChild(sty);
+
+async function boot2() { store.subscribe(refresh); await refresh(); }
+(async function boot() {
+  try {
+    const r = await store.init();
+    if (r === false) return showAuth("login");
+    if (r === "nohousehold") return showAuth("household");
+    boot2();
+  } catch (e) { showAuth("login", "Verbinden mislukt: " + e.message); }
+})();
+</script>
+</body>
+</html>

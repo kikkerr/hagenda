@@ -1,0 +1,8 @@
+{
+  "appId": "be.hagenda.app",
+  "appName": "Hagenda",
+  "webDir": "app",
+  "android": {
+    "allowMixedContent": false
+  }
+}

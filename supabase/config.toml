@@ -1,0 +1,4 @@
+# De functie controleert zelf wie ze aanroept (login of cron-geheim),
+# daarom staat de standaard JWT-controle van Supabase uit.
+[functions.sync-ics]
+verify_jwt = false
