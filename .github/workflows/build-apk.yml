@@ -45,6 +45,9 @@ jobs:
         run: |
           npm install
           npx cap add android
+          npx --yes @capacitor/assets@3.0.5 generate --android \
+            --iconBackgroundColor '#3346c9' --splashBackgroundColor '#3346c9' --splashBackgroundColorDark '#0f121b'
+          python3 tools/android-statusbar.py
           npx cap sync android
 
       - name: Apk bouwen
