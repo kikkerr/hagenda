@@ -3,6 +3,7 @@
   "appName": "Hagenda",
   "webDir": "app",
   "android": {
-    "allowMixedContent": false
+    "allowMixedContent": false,
+    "adjustMarginsForEdgeToEdge": "force"
   }
 }
