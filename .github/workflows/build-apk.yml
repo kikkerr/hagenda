@@ -4,19 +4,19 @@ on:
   workflow_dispatch:        # handmatig starten via tabblad "Actions"
   push:
     branches: [main]
-    paths: ["app/**", "capacitor.config.json", "package.json", ".github/workflows/build-apk.yml"]
+    paths: ["app/**", "assets/**", "tools/**", "capacitor.config.json", "package.json", ".github/workflows/build-apk.yml"]
 
 jobs:
   apk:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 22
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 21
@@ -57,7 +57,7 @@ jobs:
       - name: Apk hernoemen
         run: cp android/app/build/outputs/apk/debug/app-debug.apk "Hagenda-${{ github.run_number }}.apk"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: Hagenda-apk-${{ github.run_number }}
           path: Hagenda-*.apk
