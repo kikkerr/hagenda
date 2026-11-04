@@ -1,0 +1,10 @@
+// Hagenda — instellingen voor Cloudflare (website)
+// De website bestaat enkel uit de bestanden in de map "app".
+{
+  "name": "hagenda",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./app",
+    "not_found_handling": "single-page-application"
+  }
+}
