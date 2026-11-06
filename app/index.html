@@ -42,7 +42,7 @@ svg.i{width:20px;height:20px;flex:none;stroke:currentColor;fill:none;stroke-widt
 #banner{grid-column:1/-1}
 header{grid-column:1/-1;display:flex;align-items:center;gap:8px;background:var(--surface);border-bottom:1px solid var(--line);
   padding-block:8px;padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px));min-width:0}
-.icon-btn{display:inline-grid;place-items:center;width:40px;height:40px;border-radius:50%;border:0;background:transparent;color:var(--fg)}
+.icon-btn{flex:none;padding:0;display:inline-grid;place-items:center;width:40px;height:40px;border-radius:50%;border:0;background:transparent;color:var(--fg)}
 .icon-btn:hover{background:var(--surface-2)}
 .btn{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:18px;border:1px solid var(--line);background:var(--surface);font-weight:600;white-space:nowrap}
 .btn:hover{background:var(--surface-2)}
@@ -55,8 +55,9 @@ header{grid-column:1/-1;display:flex;align-items:center;gap:8px;background:var(-
 .seg{display:flex;background:var(--surface-2);border-radius:18px;padding:3px;gap:2px}
 .seg button{border:0;background:transparent;height:30px;padding:0 12px;border-radius:15px;font-weight:600;color:var(--muted)}
 .seg button[aria-pressed="true"]{background:var(--surface);color:var(--fg);box-shadow:0 1px 3px rgba(0,0,0,.12)}
-#viewSel{display:none;height:36px;border-radius:18px;border:1px solid var(--line);background:var(--surface);padding:0 10px;font-weight:600}
-.avatar{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:13px;color:#fff;border:0}
+#viewBtn{display:none;flex:none;padding:0 10px 0 14px;gap:4px}
+#viewBtn svg{width:16px;height:16px;color:var(--muted)}
+.avatar{flex:none;width:36px;height:36px;min-width:36px;padding:0;aspect-ratio:1;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:13px;color:#fff;border:0}
 
 #banner .inner{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;background:var(--warn-bg);color:var(--warn-fg);font-size:13px;
   padding-block:6px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
@@ -163,6 +164,36 @@ textarea.inp{height:auto;min-height:70px;padding:10px 12px;resize:vertical}
 .inp.big{font-size:18px;font-weight:600;height:48px}
 .row{display:flex;gap:8px;flex-wrap:wrap}
 .row>*{flex:1 1 130px}
+.row.dt{display:grid;grid-template-columns:minmax(0,1fr) 96px;gap:8px}
+.row.dt:has([data-time][hidden]){grid-template-columns:minmax(0,1fr)}
+.row.stack{flex-direction:column}
+.row.dt>*,.row.stack>*{flex:none;min-width:0}
+/* eigen keuzelijst (vervangt de systeem-pop-up) */
+.sel{display:flex;align-items:center;gap:10px;text-align:left;cursor:pointer}
+.sel .sv{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sel small{color:var(--muted);font-size:13px}
+.sel .sw,.opt .sw{width:12px;height:12px;border-radius:50%;background:var(--c);flex:none}
+.sel svg{color:var(--muted);width:18px;height:18px}
+dialog.sheet{width:min(420px,calc(100vw - 24px));max-width:100vw;padding:6px 0 10px;border-radius:20px;animation:sheetIn .2s ease-out}
+dialog.sheet::backdrop{background:rgba(10,12,25,.45)}
+.sheet-grip{width:40px;height:4px;border-radius:2px;background:var(--line);margin:4px auto 6px}
+.sheet-title{font:600 12px var(--font-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:6px 22px 8px}
+.sheet-list{display:flex;flex-direction:column;max-height:60vh;overflow:auto}
+.opt{display:flex;align-items:center;gap:14px;width:100%;min-height:54px;padding:10px 22px;border:0;background:none;text-align:left;font-size:16px;color:var(--fg)}
+.opt:hover,.opt:focus-visible{background:var(--surface-2);outline:none}
+.opt .t{flex:1;min-width:0}
+.opt .t small{display:block;color:var(--muted);font-size:13px;margin-top:1px}
+.opt .ck{color:var(--accent);visibility:hidden}
+.opt[aria-selected="true"]{font-weight:600}
+.opt[aria-selected="true"] small{font-weight:400}
+#todayBtn .ti{display:none}
+.opt[aria-selected="true"] .ck{visibility:visible}
+@keyframes sheetIn{from{transform:translateY(24px);opacity:0}}
+@media (max-width:760px){
+  dialog.sheet{margin:auto 0 0;width:100vw;border-radius:22px 22px 0 0;padding-bottom:calc(14px + env(safe-area-inset-bottom,0px))}
+}
+#view{position:relative;overflow:hidden;touch-action:pan-y}
+#view>*{will-change:transform}
 .check{display:flex;align-items:center;gap:8px;font-weight:500}
 .check input{width:18px;height:18px;accent-color:var(--accent)}
 .swatches{display:flex;gap:8px;flex-wrap:wrap}
@@ -207,8 +238,11 @@ code.k{font-size:13px;background:var(--surface-2);padding:2px 6px;border-radius:
 }
 @media (min-width:1000px){ #menuBtn{display:none} }
 @media (max-width:760px){
-  .seg.views{display:none} #viewSel{display:block}
-  #todayBtn{padding:0 10px}
+  .seg.views{display:none} #viewBtn{display:inline-flex}
+  #todayBtn{flex:none;width:36px;height:36px;padding:0;justify-content:center;border-radius:10px;border-width:1.5px}
+  #todayBtn .tl{display:none} #todayBtn .ti{display:block;font-weight:700;font-size:14px}
+  #title small{display:none}
+  header{gap:4px}
   #title{font-size:17px}
   .tg-row{grid-template-columns:40px repeat(var(--n),minmax(0,1fr))}
   .tg-hours span{font-size:10px;right:4px}
@@ -225,16 +259,14 @@ code.k{font-size:13px;background:var(--surface-2);padding:2px 6px;border-radius:
   <div id="banner"></div>
   <header>
     <button class="icon-btn" id="menuBtn" aria-label="Agenda's tonen"><svg class="i" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
-    <button class="btn" id="todayBtn">Vandaag</button>
+    <button class="btn" id="todayBtn" aria-label="Naar vandaag"><span class="tl">Vandaag</span><span class="ti tab"></span></button>
     <button class="icon-btn" id="prevBtn" aria-label="Vorige"><svg class="i" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></button>
     <button class="icon-btn" id="nextBtn" aria-label="Volgende"><svg class="i" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button>
     <h1 id="title"></h1>
     <div class="seg views" role="group" aria-label="Weergave">
       <button data-v="dag">Dag</button><button data-v="3dagen">3 dagen</button><button data-v="week">Week</button><button data-v="maand">Maand</button><button data-v="planning">Planning</button>
     </div>
-    <select id="viewSel" aria-label="Weergave">
-      <option value="dag">Dag</option><option value="3dagen">3 dagen</option><option value="week">Week</option><option value="maand">Maand</option><option value="planning">Planning</option>
-    </select>
+    <button class="btn" id="viewBtn" aria-haspopup="listbox" aria-label="Weergave kiezen"><span id="viewLbl">Week</span><svg class="i" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
     <button class="avatar" id="meBtn" aria-label="Account en instellingen"></button>
   </header>
   <aside id="drawer" aria-label="Agenda's"></aside>
@@ -243,6 +275,7 @@ code.k{font-size:13px;background:var(--surface-2);padding:2px 6px;border-radius:
 </div>
 <button id="fab" aria-label="Nieuwe afspraak"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>Afspraak</span></button>
 <dialog id="dlg"></dialog>
+<dialog id="sheet" class="sheet"></dialog>
 <div id="auth" hidden></div>
 <div id="toast" hidden></div>
 
@@ -615,9 +648,16 @@ function renderHeader() {
   else { const [a, b] = rangeFor(v, c), e = addDays(b, -1);
     t = a.getMonth() === e.getMonth() ? `${MONTHS[a.getMonth()]} ${a.getFullYear()}` : `${MON_S[a.getMonth()]} – ${MON_S[e.getMonth()]} ${e.getFullYear()}`;
     if (v === "week") sub = `Week ${isoWeek(a)}`; }
+  if (innerWidth < 760) { // korte titel op gsm
+    const yr = c.getFullYear() === new Date().getFullYear() ? "" : " " + c.getFullYear();
+    if (v === "maand") t = MONTHS[c.getMonth()] + yr;
+    else if (v === "dag") t = `${DOW[dow(c)]} ${c.getDate()} ${MON_S[c.getMonth()]}`;
+    else if (v !== "planning") { const [a, b] = rangeFor(v, c), e = addDays(b, -1); t = a.getMonth() === e.getMonth() ? MONTHS[a.getMonth()] + yr : `${MON_S[a.getMonth()]} – ${MON_S[e.getMonth()]}`; }
+  }
   $("#title").innerHTML = esc(t) + (sub ? `<small>${esc(sub)}</small>` : "");
+  $("#todayBtn .ti").textContent = new Date().getDate();
   document.querySelectorAll(".seg.views button").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === v));
-  $("#viewSel").value = v;
+  $("#viewLbl").textContent = (VIEWS.find(x => x.value === v) || {}).label || "";
   const me = store.members().find(m => m.user_id === store.me) || { display_name: "?", color: "#5b6275" };
   const mb = $("#meBtn"); mb.textContent = (me.display_name || "?").slice(0, 1).toUpperCase(); mb.style.background = me.color || "#5b6275";
 }
@@ -758,7 +798,46 @@ function agendaHTML() {
    DIALOGEN
    ============================================================ */
 const dlg = $("#dlg");
-function openDialog(html, onMount) { dlg.innerHTML = `<div class="dlg">${html}</div>`; dlg.showModal(); dlg.querySelectorAll("[data-close]").forEach(b => b.onclick = () => dlg.close()); onMount && onMount(dlg); }
+function openDialog(html, onMount) { dlg.innerHTML = `<div class="dlg">${html}</div>`; dlg.showModal(); dlg.querySelectorAll("[data-close]").forEach(b => b.onclick = () => dlg.close()); wireSelects(dlg); onMount && onMount(dlg); }
+
+/* ---------- eigen keuzelijst als onderblad ---------- */
+const VIEWS = [
+  { value: "dag", label: "Dag" }, { value: "3dagen", label: "3 dagen" }, { value: "week", label: "Week" },
+  { value: "maand", label: "Maand" }, { value: "planning", label: "Planning", sub: "Lijst van komende afspraken" },
+];
+const sheet = $("#sheet");
+function pick({ title, options, value }) {
+  return new Promise(resolve => {
+    sheet.innerHTML = `<div class="sheet-grip"></div>${title ? `<div class="sheet-title">${esc(title)}</div>` : ""}
+      <div class="sheet-list" role="listbox">${options.map((o, i) => `<button type="button" class="opt" role="option" data-i="${i}" aria-selected="${o.value === value}"${o.color ? ` style="--c:${o.color}"` : ""}>
+        ${o.color ? '<span class="sw"></span>' : ""}<span class="t">${esc(o.label)}${o.sub ? `<small>${esc(o.sub)}</small>` : ""}</span>
+        <svg class="i ck" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>`).join("")}</div>`;
+    let done = false;
+    const finish = v => { if (done) return; done = true; if (sheet.open) sheet.close(); resolve(v); };
+    sheet.querySelectorAll(".opt").forEach(b => b.onclick = () => finish(options[+b.dataset.i].value));
+    sheet.onclick = e => { if (e.target === sheet) finish(undefined); };
+    sheet.onclose = () => finish(undefined);
+    sheet.showModal();
+    const cur = sheet.querySelector('[aria-selected="true"]') || sheet.querySelector(".opt");
+    cur && cur.focus({ preventScroll: true }); cur && cur.scrollIntoView({ block: "nearest" });
+  });
+}
+const SEL = {};
+const selInner = o => `${o.color ? `<span class="sw" style="--c:${o.color}"></span>` : ""}<span class="sv">${esc(o.label)}${o.sub ? ` <small>· ${esc(o.sub)}</small>` : ""}</span><svg class="i" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>`;
+function selField(id, value, options, title) {
+  SEL[id] = { options, title };
+  const o = options.find(x => x.value === value) || options[0];
+  return `<input type="hidden" id="${id}" value="${esc(o.value)}"><button type="button" class="inp sel" data-sel="${id}" aria-haspopup="listbox" aria-label="${esc(title)}">${selInner(o)}</button>`;
+}
+function wireSelects(root) {
+  root.querySelectorAll("[data-sel]").forEach(b => b.onclick = async () => {
+    const id = b.dataset.sel, inp = root.querySelector("#" + id), cfg = SEL[id];
+    const v = await pick({ title: cfg.title, options: cfg.options, value: inp.value });
+    if (v === undefined || v === inp.value) return;
+    inp.value = v; b.innerHTML = selInner(cfg.options.find(x => x.value === v));
+    inp.dispatchEvent(new Event("change"));
+  });
+}
 dlg.addEventListener("click", e => { if (e.target === dlg) dlg.close(); });
 
 function freqLabel(r) { if (!r || !r.freq) return ""; const m = { daily: "Elke dag", weekly: "Elke week", monthly: "Elke maand", yearly: "Elk jaar" }[r.freq]; return m + (r.until ? ` tot ${fmtDate(fromKey(r.until))}` : ""); }
@@ -809,26 +888,25 @@ function openEventEditor(ev, preset = {}) {
     <form class="dlg-body" id="evForm" novalidate>
       <input class="inp big" id="f-title" placeholder="Titel" value="${esc(ev ? ev.title : "")}" required autocomplete="off">
       <div class="field"><label for="f-cal">Agenda</label>
-        <select class="inp" id="f-cal">${cals.map(c => `<option value="${c.id}" ${c.id === calId ? "selected" : ""}>${esc(c.name)} — ${c.visibility === "private" ? "privé" : "gedeeld"}${!isMine(c) ? " (van " + esc(memberName(c.owner_id)) + ")" : ""}</option>`).join("")}</select></div>
+        ${selField("f-cal", calId, cals.map(c => ({ value: c.id, label: c.name, color: c.color, sub: (c.visibility === "private" ? "privé" : "gedeeld") + (!isMine(c) ? ", van " + memberName(c.owner_id) : "") })), "Agenda")}</div>
       <p class="note" id="f-privnote" hidden></p>
       <label class="check"><input type="checkbox" id="f-allday" ${allDay ? "checked" : ""}> Hele dag</label>
-      <div class="row">
+      <div class="row dt">
         <div class="field"><label for="f-sd">Begin</label>${dateField("f-sd", dkey(s))}</div>
-        <div class="field" data-time><label for="f-st">&nbsp;</label><input class="inp tab" inputmode="numeric" placeholder="uu:mm" maxlength="5" list="times24" autocomplete="off" id="f-st" value="${hm(s)}"></div>
+        <div class="field" data-time><label for="f-st">&nbsp;</label><input class="inp tab" inputmode="numeric" placeholder="uu:mm" maxlength="5" autocomplete="off" id="f-st" value="${hm(s)}"></div>
       </div>
-      <div class="row">
+      <div class="row dt">
         <div class="field"><label for="f-ed">Einde</label>${dateField("f-ed", dkey(e))}</div>
-        <div class="field" data-time><label for="f-et">&nbsp;</label><input class="inp tab" inputmode="numeric" placeholder="uu:mm" maxlength="5" list="times24" autocomplete="off" id="f-et" value="${hm(e)}"></div>
+        <div class="field" data-time><label for="f-et">&nbsp;</label><input class="inp tab" inputmode="numeric" placeholder="uu:mm" maxlength="5" autocomplete="off" id="f-et" value="${hm(e)}"></div>
       </div>
-      <div class="row">
+      <div class="row stack">
         <div class="field"><label for="f-rr">Herhalen</label>
-          <select class="inp" id="f-rr">${[["", "Niet herhalen"], ["daily", "Elke dag"], ["weekly", "Elke week"], ["monthly", "Elke maand"], ["yearly", "Elk jaar"]].map(([v, l]) => `<option value="${v}" ${(r.freq || "") === v ? "selected" : ""}>${l}</option>`).join("")}</select></div>
+          ${selField("f-rr", r.freq || "", [["", "Niet herhalen"], ["daily", "Elke dag"], ["weekly", "Elke week"], ["monthly", "Elke maand"], ["yearly", "Elk jaar"]].map(([value, label]) => ({ value, label })), "Herhalen")}</div>
         <div class="field" id="f-untilwrap"><label for="f-until">Tot en met (leeg = altijd)</label>${dateField("f-until", r.until || "")}</div>
       </div>
       <div class="field"><label for="f-loc">Locatie</label><input class="inp" id="f-loc" value="${esc(ev ? ev.location : "")}" autocomplete="off"></div>
       <div class="field"><label for="f-notes">Notities</label><textarea class="inp" id="f-notes">${esc(ev ? ev.notes : "")}</textarea></div>
       <div class="err" id="f-err"></div>
-      <datalist id="times24">${[...Array(96)].map((_, i) => `<option value="${pad(Math.floor(i / 4))}:${pad(i % 4 * 15)}">`).join("")}</datalist>
     </form>
     <div class="dlg-foot"><button class="btn" data-close>Annuleren</button><button class="btn primary" id="f-save">Opslaan</button></div>`,
     d => {
@@ -840,6 +918,15 @@ function openEventEditor(ev, preset = {}) {
         pn.innerHTML = c.visibility === "private" ? `${I.lock.replace('class="i"', 'class="i" style="width:14px;height:14px;vertical-align:-2px"')} <b>Privé:</b> enkel jij ziet deze afspraak.` : `<b>Gedeeld:</b> iedereen in jullie huishouden ziet deze afspraak.`;
       };
       ["#f-allday", "#f-rr", "#f-cal"].forEach(id => $(id, d).onchange = sync); sync();
+      // typen met het toetsenbord: alles selecteren bij aantikken, automatisch opmaken
+      ["#f-st", "#f-et", "#f-sd", "#f-ed", "#f-until"].forEach(id => {
+        const t = $(id, d); if (!t) return;
+        t.addEventListener("focus", () => setTimeout(() => { try { t.select(); } catch {} }, 0));
+        t.addEventListener("input", () => {
+          if (id === "#f-st" || id === "#f-et") { if (/^\d{4}$/.test(t.value)) { const n = normTime(t.value); if (n) { t.value = n; t.dispatchEvent(new Event("change")); } } }
+          else if (/^\d{8}$/.test(t.value)) { const k = normDate(t.value); if (k) { t.value = fmtDate(fromKey(k)); t.dispatchEvent(new Event("change")); } }
+        });
+      });
       const gd = id => normDate($(id, d).value), setD = (id, k) => { $(id, d).value = fmtDate(fromKey(k)); };
       d.querySelectorAll("[data-pick]").forEach(b => b.onclick = () => {
         const pk = d.querySelector(`.picker[data-for="${b.dataset.pick}"]`), k = normDate($("#" + b.dataset.pick, d).value);
@@ -1050,19 +1137,60 @@ $("#todayBtn").onclick = () => { state.cursor = sod(new Date()); renderHeader();
 $("#prevBtn").onclick = () => move(-1);
 $("#nextBtn").onclick = () => move(1);
 document.querySelectorAll(".seg.views button").forEach(b => b.onclick = () => setView(b.dataset.v));
-$("#viewSel").onchange = e => setView(e.target.value);
+$("#viewBtn").onclick = async () => { const v = await pick({ title: "Weergave", options: VIEWS, value: state.view }); if (v) setView(v); };
 $("#fab").onclick = () => openEventEditor(null);
 $("#meBtn").onclick = openSettings;
 addEventListener("keydown", e => {
-  if (dlg.open || /input|textarea|select/i.test(e.target.tagName)) return;
+  if (dlg.open || sheet.open || /input|textarea|select/i.test(e.target.tagName)) return;
   const k = { ArrowLeft: () => move(-1), ArrowRight: () => move(1), t: () => $("#todayBtn").click(), n: () => openEventEditor(null), d: () => setView("dag"), w: () => setView("week"), m: () => setView("maand") }[e.key];
   if (k) { e.preventDefault(); k(); }
 });
-// swipen op gsm
-let tx = null;
-$("#view").addEventListener("touchstart", e => { tx = e.touches.length === 1 ? [e.touches[0].clientX, e.touches[0].clientY] : null; }, { passive: true });
-$("#view").addEventListener("touchend", e => { if (!tx) return; const dx = e.changedTouches[0].clientX - tx[0], dy = e.changedTouches[0].clientY - tx[1]; if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.5) move(dx < 0 ? 1 : -1); tx = null; }, { passive: true });
-let lastW = innerWidth; addEventListener("resize", () => { if (Math.abs(innerWidth - lastW) > 50) { lastW = innerWidth; renderView(); } });
+// swipen op gsm: de weergave volgt je vinger en schuift vloeiend door
+const VIEW = $("#view"), reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let sw = null, swBusy = false;
+VIEW.addEventListener("touchstart", e => {
+  if (swBusy || e.touches.length !== 1) { sw = null; return; }
+  const t = e.touches[0]; sw = { x: t.clientX, y: t.clientY, t: performance.now(), lock: null, dx: 0, el: VIEW.firstElementChild };
+}, { passive: true });
+VIEW.addEventListener("touchmove", e => {
+  if (!sw || !sw.el) return;
+  const t = e.touches[0], dx = t.clientX - sw.x, dy = t.clientY - sw.y;
+  if (!sw.lock) { if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) sw.lock = "h"; else if (Math.abs(dy) > 8) sw.lock = "v"; }
+  if (sw.lock !== "h") return;
+  if (e.cancelable) e.preventDefault();
+  sw.dx = dx;
+  sw.el.style.transition = "none";
+  sw.el.style.transform = `translate3d(${dx}px,0,0)`;
+  sw.el.style.opacity = String(1 - Math.min(.3, Math.abs(dx) / VIEW.clientWidth * .5));
+}, { passive: false });
+const swEnd = () => {
+  if (!sw) return; const s = sw; sw = null;
+  if (s.lock !== "h" || !s.el) return;
+  const w = VIEW.clientWidth, v = Math.abs(s.dx) / Math.max(1, performance.now() - s.t);
+  const go = Math.abs(s.dx) > w * .22 || (v > .45 && Math.abs(s.dx) > 30);
+  const ease = "transform .26s cubic-bezier(.22,.8,.3,1), opacity .26s";
+  if (!go) { s.el.style.transition = ease; s.el.style.transform = "translate3d(0,0,0)"; s.el.style.opacity = "1"; return; }
+  const dir = s.dx < 0 ? 1 : -1;
+  if (reduceMotion) { move(dir); return; }
+  swBusy = true;
+  const old = s.el, oldScroll = old.querySelector(".tg-scroll, .agenda"), top = oldScroll ? oldScroll.scrollTop : 0;
+  move(dir);                                   // nieuwe periode tekenen
+  const n = VIEW.firstElementChild;
+  // oude periode als laag erboven terugzetten, zodat beide tegelijk schuiven
+  old.style.position = "absolute"; old.style.inset = "0"; old.style.pointerEvents = "none"; old.style.zIndex = "2";
+  VIEW.appendChild(old);
+  if (oldScroll) oldScroll.scrollTop = top;
+  const nScroll = n && n.querySelector(".tg-scroll");
+  if (nScroll && oldScroll && oldScroll.classList.contains("tg-scroll")) nScroll.scrollTop = top;
+  if (n) { n.style.transition = "none"; n.style.transform = `translate3d(${dir * w + s.dx}px,0,0)`; n.style.opacity = "1"; }
+  void VIEW.offsetWidth;
+  old.style.transition = ease; old.style.transform = `translate3d(${-dir * w}px,0,0)`; old.style.opacity = ".6";
+  if (n) { n.style.transition = ease; n.style.transform = "translate3d(0,0,0)"; }
+  setTimeout(() => { old.remove(); if (n) { n.style.transition = ""; n.style.transform = ""; } swBusy = false; }, 280);
+};
+VIEW.addEventListener("touchend", swEnd, { passive: true });
+VIEW.addEventListener("touchcancel", swEnd, { passive: true });
+let lastW = innerWidth; addEventListener("resize", () => { if (Math.abs(innerWidth - lastW) > 50) { lastW = innerWidth; renderHeader(); renderView(); } });
 setInterval(() => { if (!dlg.open && state.view !== "planning" && state.view !== "maand") renderView(); }, 60000);
 const sty = document.createElement("style"); sty.textContent = "@keyframes spin{to{transform:rotate(360deg)}}"; document.head.appendChild(sty);
 
